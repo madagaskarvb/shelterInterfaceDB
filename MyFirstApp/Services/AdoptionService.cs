@@ -17,37 +17,55 @@ namespace AnimalShelter.Services
             _animalRepository = animalRepository;
         }
 
-        public void CreateAdoption(Adoption adoption)
+        public void CreateAdoption(int adopterId, int animalId, int statusId, string notes)
         {
-            try
+            var adoption = new Adoption
             {
-                // Проверка доступности животного
-                var animal = _animalRepository.GetById(adoption.AnimalId);
-                if (animal == null)
-                {
-                    Console.WriteLine("Животное не найдено!");
-                    return;
-                }
+                AdopterId = adopterId,
+                AnimalId = animalId,
+                AdoptionDate = DateTime.Now,
+                StatusId = statusId,
+                Notes = notes
+            };
 
-                if (animal.Status == "Adopted")
-                {
-                    Console.WriteLine("Это животное уже усыновлено!");
-                    return;
-                }
-
-                _adoptionRepository.Add(adoption);
-                _adoptionRepository.SaveChanges();
-                Console.WriteLine("Заявка на усыновление создана!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при создании заявки: {ex.Message}");
-            }
+            _adoptionRepository.Add(adoption);
+            _adoptionRepository.SaveChanges();
+            Console.WriteLine("Заявка на усыновление создана!");
         }
 
-        public Adoption GetAdoptionById(int id)
+        public void UpdateAdoptionStatus(int adoptionId, int newStatusId)
         {
-            return _adoptionRepository.GetById(id);
+            var adoption = _adoptionRepository.GetById(adoptionId);
+            if (adoption == null)
+            {
+                Console.WriteLine("Усыновление не найдено!");
+                return;
+            }
+
+            adoption.StatusId = newStatusId;
+            _adoptionRepository.Update(adoption);
+            _adoptionRepository.SaveChanges();
+            Console.WriteLine($"Статус усыновления обновлен!");
+        }
+
+        public void ReturnAnimal(int adoptionId, DateTime returnDate)
+        {
+            var adoption = _adoptionRepository.GetById(adoptionId);
+            if (adoption == null)
+            {
+                Console.WriteLine("Усыновление не найдено!");
+                return;
+            }
+
+            adoption.ReturnDate = returnDate;
+            _adoptionRepository.Update(adoption);
+            _adoptionRepository.SaveChanges();
+            Console.WriteLine("Животное возвращено в приют!");
+        }
+
+        public Adoption GetAdoptionById(int adoptionId)
+        {
+            return _adoptionRepository.GetById(adoptionId);
         }
 
         public IEnumerable<Adoption> GetAllAdoptions()
@@ -55,63 +73,14 @@ namespace AnimalShelter.Services
             return _adoptionRepository.GetAll();
         }
 
-        public IEnumerable<Adoption> GetAdoptionsByStatus(string status)
+        public IEnumerable<Adoption> GetAdoptionsByAdopter(int adopterId)
         {
-            return _adoptionRepository.GetAdoptionsByStatus(status);
+            return _adoptionRepository.GetAdoptionsByAdopter(adopterId);
         }
 
-        public void ApproveAdoption(int adoptionId)
+        public IEnumerable<Adoption> GetAdoptionsByStatus(int statusId)
         {
-            try
-            {
-                var adoption = _adoptionRepository.GetById(adoptionId);
-                if (adoption == null)
-                {
-                    Console.WriteLine("Заявка не найдена!");
-                    return;
-                }
-
-                adoption.Status = "Approved";
-                _adoptionRepository.Update(adoption);
-
-                // Обновление статуса животного
-                var animal = _animalRepository.GetById(adoption.AnimalId);
-                if (animal != null)
-                {
-                    animal.Status = "Adopted";
-                    _animalRepository.Update(animal);
-                }
-
-                _adoptionRepository.SaveChanges();
-                Console.WriteLine("Усыновление одобрено!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка: {ex.Message}");
-            }
-        }
-
-        public void RejectAdoption(int adoptionId, string reason)
-        {
-            try
-            {
-                var adoption = _adoptionRepository.GetById(adoptionId);
-                if (adoption == null)
-                {
-                    Console.WriteLine("Заявка не найдена!");
-                    return;
-                }
-
-                adoption.Status = "Rejected";
-                adoption.Notes = reason;
-                _adoptionRepository.Update(adoption);
-                _adoptionRepository.SaveChanges();
-                Console.WriteLine("Заявка отклонена!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка: {ex.Message}");
-            }
+            return _adoptionRepository.GetAdoptionsByStatus(statusId);
         }
     }
 }

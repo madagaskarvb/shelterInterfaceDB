@@ -7,9 +7,9 @@ namespace AnimalShelter.Helpers
         public static void PrintHeader(string title)
         {
             Console.Clear();
-            Console.WriteLine("=".PadRight(50, '='));
+            Console.WriteLine("==================================================");
             Console.WriteLine($" {title}");
-            Console.WriteLine("=".PadRight(50, '='));
+            Console.WriteLine("==================================================");
             Console.WriteLine();
         }
 

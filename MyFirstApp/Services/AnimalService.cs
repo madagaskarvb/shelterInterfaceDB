@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using AnimalShelter.Interfaces;
 using AnimalShelter.Models;
 
@@ -14,23 +15,57 @@ namespace AnimalShelter.Services
             _animalRepository = animalRepository;
         }
 
-        public void AddAnimal(Animal animal)
+        public void AddAnimal(string name, int age, string species, string breed, string gender, int statusId, string description)
         {
-            try
+            var animal = new Animal
             {
-                _animalRepository.Add(animal);
-                _animalRepository.SaveChanges();
-                Console.WriteLine($"Животное '{animal.Name}' успешно добавлено в систему!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при добавлении животного: {ex.Message}");
-            }
+                Name = name,
+                Age = age,
+                Species = species,
+                Breed = breed,
+                Gender = gender,
+                StatusId = statusId,
+                Description = description,
+                DateAdmitted = DateTime.Now
+            };
+
+            _animalRepository.Add(animal);
+            _animalRepository.SaveChanges();
+            Console.WriteLine($"Животное {name} добавлено в приют!");
         }
 
-        public Animal GetAnimalById(int id)
+        public void UpdateAnimal(int animalId, string name, int? age, string species, string breed, string gender, int? statusId, string description)
         {
-            return _animalRepository.GetById(id);
+            var animal = _animalRepository.GetById(animalId);
+            if (animal == null)
+            {
+                Console.WriteLine("Животное не найдено!");
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(name)) animal.Name = name;
+            if (age.HasValue) animal.Age = age.Value;
+            if (!string.IsNullOrEmpty(species)) animal.Species = species;
+            if (!string.IsNullOrEmpty(breed)) animal.Breed = breed;
+            if (!string.IsNullOrEmpty(gender)) animal.Gender = gender;
+            if (statusId.HasValue) animal.StatusId = statusId.Value;
+            if (!string.IsNullOrEmpty(description)) animal.Description = description;
+
+            _animalRepository.Update(animal);
+            _animalRepository.SaveChanges();
+            Console.WriteLine($"Данные животного {animal.Name} обновлены!");
+        }
+
+        public void DeleteAnimal(int animalId)
+        {
+            _animalRepository.Delete(animalId);
+            _animalRepository.SaveChanges();
+            Console.WriteLine("Животное удалено из системы!");
+        }
+
+        public Animal GetAnimalById(int animalId)
+        {
+            return _animalRepository.GetById(animalId);
         }
 
         public IEnumerable<Animal> GetAllAnimals()
@@ -38,59 +73,9 @@ namespace AnimalShelter.Services
             return _animalRepository.GetAll();
         }
 
-        public IEnumerable<Animal> GetAnimalsByStatus(string status)
+        public IEnumerable<Animal> GetAnimalsByStatus(int statusId)
         {
-            return _animalRepository.GetAnimalsByStatus(status);
-        }
-
-        public IEnumerable<Animal> GetAnimalsBySpecies(string species)
-        {
-            return _animalRepository.GetAnimalsBySpecies(species);
-        }
-
-        public Animal GetAnimalWithMedicalRecord(int animalId)
-        {
-            return _animalRepository.GetAnimalWithMedicalRecord(animalId);
-        }
-
-        public void UpdateAnimal(Animal animal)
-        {
-            try
-            {
-                _animalRepository.Update(animal);
-                _animalRepository.SaveChanges();
-                Console.WriteLine("Информация о животном успешно обновлена!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при обновлении: {ex.Message}");
-            }
-        }
-
-        public void DeleteAnimal(int id)
-        {
-            try
-            {
-                _animalRepository.Delete(id);
-                _animalRepository.SaveChanges();
-                Console.WriteLine("Животное удалено из системы!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при удалении: {ex.Message}");
-            }
-        }
-
-        public void UpdateAnimalStatus(int animalId, string newStatus)
-        {
-            var animal = _animalRepository.GetById(animalId);
-            if (animal != null)
-            {
-                animal.Status = newStatus;
-                _animalRepository.Update(animal);
-                _animalRepository.SaveChanges();
-                Console.WriteLine($"Статус животного изменен на '{newStatus}'");
-            }
+            return _animalRepository.GetAnimalsByStatus(statusId);
         }
     }
 }

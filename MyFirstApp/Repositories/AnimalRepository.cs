@@ -13,27 +13,29 @@ namespace AnimalShelter.Repositories
         {
         }
 
-        public IEnumerable<Animal> GetAnimalsByStatus(string status)
+        public IEnumerable<Animal> GetAnimalsByStatus(int statusId)
         {
-            return _dbSet
-                .Where(a => a.Status == status)
-                .OrderBy(a => a.DateAdmitted)
-                .ToList();
-        }
-
-        public IEnumerable<Animal> GetAnimalsBySpecies(string species)
-        {
-            return _dbSet
-                .Where(a => a.Species == species)
-                .OrderBy(a => a.Name)
-                .ToList();
-        }
-
-        public Animal GetAnimalWithMedicalRecord(int animalId)
-        {
-            return _dbSet
+            return _context.Animals
+                .Include(a => a.AnimalStatus)
                 .Include(a => a.MedicalRecord)
-                .FirstOrDefault(a => a.AnimalId == animalId);
+                .Where(a => a.StatusId == statusId)
+                .ToList();
+        }
+
+        public override Animal GetById(int id)
+        {
+            return _context.Animals
+                .Include(a => a.AnimalStatus)
+                .Include(a => a.MedicalRecord)
+                .FirstOrDefault(a => a.AnimalId == id);
+        }
+
+        public override IEnumerable<Animal> GetAll()
+        {
+            return _context.Animals
+                .Include(a => a.AnimalStatus)
+                .Include(a => a.MedicalRecord)
+                .ToList();
         }
     }
 }

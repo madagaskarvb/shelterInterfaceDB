@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
@@ -14,32 +13,41 @@ namespace AnimalShelter.Repositories
         {
         }
 
-        public IEnumerable<Adoption> GetAdoptionsByStatus(string status)
-        {
-            return _dbSet
-                .Include(a => a.Animal)
-                .Include(a => a.Adopter)
-                .Where(a => a.Status == status)
-                .OrderByDescending(a => a.AdoptionDate)
-                .ToList();
-        }
-
-        public IEnumerable<Adoption> GetAdoptionsByDateRange(DateTime startDate, DateTime endDate)
-        {
-            return _dbSet
-                .Include(a => a.Animal)
-                .Include(a => a.Adopter)
-                .Where(a => a.AdoptionDate >= startDate && a.AdoptionDate <= endDate)
-                .OrderByDescending(a => a.AdoptionDate)
-                .ToList();
-        }
-
         public IEnumerable<Adoption> GetAdoptionsByAdopter(int adopterId)
         {
-            return _dbSet
+            return _context.Adoptions
+                .Include(a => a.Adopter)
                 .Include(a => a.Animal)
+                .Include(a => a.AdoptionStatus)
                 .Where(a => a.AdopterId == adopterId)
-                .OrderByDescending(a => a.AdoptionDate)
+                .ToList();
+        }
+
+        public IEnumerable<Adoption> GetAdoptionsByStatus(int statusId)
+        {
+            return _context.Adoptions
+                .Include(a => a.Adopter)
+                .Include(a => a.Animal)
+                .Include(a => a.AdoptionStatus)
+                .Where(a => a.StatusId == statusId)
+                .ToList();
+        }
+
+        public override Adoption GetById(int id)
+        {
+            return _context.Adoptions
+                .Include(a => a.Adopter)
+                .Include(a => a.Animal)
+                .Include(a => a.AdoptionStatus)
+                .FirstOrDefault(a => a.AdoptionId == id);
+        }
+
+        public override IEnumerable<Adoption> GetAll()
+        {
+            return _context.Adoptions
+                .Include(a => a.Adopter)
+                .Include(a => a.Animal)
+                .Include(a => a.AdoptionStatus)
                 .ToList();
         }
     }

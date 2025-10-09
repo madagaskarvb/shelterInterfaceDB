@@ -31,7 +31,6 @@ namespace AnimalShelter
             var reportService = new ReportService(context);
 
             bool exit = false;
-
             while (!exit)
             {
                 ConsoleHelper.PrintHeader("СИСТЕМА УПРАВЛЕНИЯ ПРИЮТОМ ДЛЯ ЖИВОТНЫХ");
@@ -118,38 +117,37 @@ namespace AnimalShelter
         {
             ConsoleHelper.PrintHeader("СПИСОК ВСЕХ ЖИВОТНЫХ");
             var animals = service.GetAllAnimals();
-            
             foreach (var animal in animals)
             {
-                Console.WriteLine($"ID: {animal.AnimalId} | Имя: {animal.Name} | Вид: {animal.Species} | Возраст: {animal.Age} | Статус: {animal.Status}");
+                Console.WriteLine($"ID: {animal.AnimalId} | Имя: {animal.Name} | Вид: {animal.Species} | Возраст: {animal.Age} | Статус: {animal.AnimalStatus?.StatusName}");
             }
-            
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
         static void AddAnimal(AnimalService service)
         {
             ConsoleHelper.PrintHeader("ДОБАВЛЕНИЕ НОВОГО ЖИВОТНОГО");
+            Console.WriteLine("Доступные статусы:");
+            Console.WriteLine("1 - InShelter (В приюте)");
+            Console.WriteLine("2 - Adopted (Усыновлен)");
+            Console.WriteLine("3 - Treatment (Лечение)");
+            Console.WriteLine("4 - Quarantine (Карантин)");
+            
+            string name = ConsoleHelper.ReadLine("Имя животного: ");
+            int age = ConsoleHelper.ReadInt("Возраст: ");
+            string species = ConsoleHelper.ReadLine("Вид (Dog, Cat, Bird и т.д.): ");
+            string breed = ConsoleHelper.ReadLine("Порода: ");
+            string gender = ConsoleHelper.ReadLine("Пол (Male/Female): ");
+            int statusId = ConsoleHelper.ReadInt("ID статуса (1-4): ");
+            string description = ConsoleHelper.ReadLine("Описание: ");
 
-            var animal = new Animal
-            {
-                Name = ConsoleHelper.ReadLine("Имя животного: "),
-                Species = ConsoleHelper.ReadLine("Вид (Dog, Cat, Bird и т.д.): "),
-                Breed = ConsoleHelper.ReadLine("Порода: "),
-                Age = ConsoleHelper.ReadInt("Возраст: "),
-                Gender = ConsoleHelper.ReadLine("Пол (Male/Female): "),
-                Description = ConsoleHelper.ReadLine("Описание: "),
-                Status = "InShelter"
-            };
-
-            service.AddAnimal(animal);
+            service.AddAnimal(name, age, species, breed, gender, statusId, description);
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
         static void UpdateAnimal(AnimalService service)
         {
             ConsoleHelper.PrintHeader("РЕДАКТИРОВАНИЕ ЖИВОТНОГО");
-            
             int id = ConsoleHelper.ReadInt("Введите ID животного: ");
             var animal = service.GetAnimalById(id);
 
@@ -161,48 +159,48 @@ namespace AnimalShelter
             }
 
             Console.WriteLine($"Текущее имя: {animal.Name}");
-            animal.Name = ConsoleHelper.ReadLine("Новое имя (Enter - оставить прежним): ");
-            
+            string name = ConsoleHelper.ReadLine("Новое имя (Enter - оставить прежним): ");
+
             Console.WriteLine($"Текущий возраст: {animal.Age}");
             string ageInput = ConsoleHelper.ReadLine("Новый возраст (Enter - оставить прежним): ");
-            if (!string.IsNullOrWhiteSpace(ageInput))
-            {
-                animal.Age = int.Parse(ageInput);
-            }
+            int? age = string.IsNullOrWhiteSpace(ageInput) ? null : int.Parse(ageInput);
 
-            service.UpdateAnimal(animal);
+            Console.WriteLine($"Текущий статус: {animal.AnimalStatus?.StatusName}");
+            string statusInput = ConsoleHelper.ReadLine("Новый ID статуса (Enter - оставить прежним): ");
+            int? statusId = string.IsNullOrWhiteSpace(statusInput) ? null : int.Parse(statusInput);
+
+            service.UpdateAnimal(id, name, age, null, null, null, statusId, null);
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
         static void DeleteAnimal(AnimalService service)
         {
             ConsoleHelper.PrintHeader("УДАЛЕНИЕ ЖИВОТНОГО");
-            
             int id = ConsoleHelper.ReadInt("Введите ID животного для удаления: ");
-            
             Console.Write("Вы уверены? (yes/no): ");
             if (Console.ReadLine()?.ToLower() == "yes")
             {
                 service.DeleteAnimal(id);
             }
-            
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
         static void SearchAnimalsByStatus(AnimalService service)
         {
             ConsoleHelper.PrintHeader("ПОИСК ЖИВОТНЫХ ПО СТАТУСУ");
+            Console.WriteLine("Доступные статусы:");
+            Console.WriteLine("1 - InShelter");
+            Console.WriteLine("2 - Adopted");
+            Console.WriteLine("3 - Treatment");
+            Console.WriteLine("4 - Quarantine");
             
-            Console.WriteLine("Доступные статусы: InShelter, Adopted, Treatment, Quarantine");
-            string status = ConsoleHelper.ReadLine("Введите статус: ");
-            
-            var animals = service.GetAnimalsByStatus(status);
+            int statusId = ConsoleHelper.ReadInt("Введите ID статуса: ");
+            var animals = service.GetAnimalsByStatus(statusId);
             
             foreach (var animal in animals)
             {
                 Console.WriteLine($"ID: {animal.AnimalId} | Имя: {animal.Name} | Вид: {animal.Species} | Возраст: {animal.Age}");
             }
-            
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
@@ -250,35 +248,29 @@ namespace AnimalShelter
         {
             ConsoleHelper.PrintHeader("СПИСОК УСЫНОВИТЕЛЕЙ");
             var adopters = service.GetAllAdopters();
-            
             foreach (var adopter in adopters)
             {
                 Console.WriteLine($"ID: {adopter.AdopterId} | Имя: {adopter.FullName} | Email: {adopter.Email} | Телефон: {adopter.Phone}");
             }
-            
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
         static void AddAdopter(AdopterService service)
         {
             ConsoleHelper.PrintHeader("РЕГИСТРАЦИЯ УСЫНОВИТЕЛЯ");
+            string firstName = ConsoleHelper.ReadLine("Имя: ");
+            string lastName = ConsoleHelper.ReadLine("Фамилия: ");
+            string email = ConsoleHelper.ReadLine("Email: ");
+            string phone = ConsoleHelper.ReadLine("Телефон: ");
+            string address = ConsoleHelper.ReadLine("Адрес: ");
 
-            var adopter = new Adopter
-            {
-                FullName = ConsoleHelper.ReadLine("ФИО: "),
-                Email = ConsoleHelper.ReadLine("Email: "),
-                Phone = ConsoleHelper.ReadLine("Телефон: "),
-                Address = ConsoleHelper.ReadLine("Адрес: ")
-            };
-
-            service.AddAdopter(adopter);
+            service.RegisterAdopter(firstName, lastName, email, phone, address);
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
         static void UpdateAdopter(AdopterService service)
         {
             ConsoleHelper.PrintHeader("РЕДАКТИРОВАНИЕ УСЫНОВИТЕЛЯ");
-            
             int id = ConsoleHelper.ReadInt("Введите ID усыновителя: ");
             var adopter = service.GetAdopterById(id);
 
@@ -290,35 +282,25 @@ namespace AnimalShelter
             }
 
             Console.WriteLine($"Текущее имя: {adopter.FullName}");
-            string newName = ConsoleHelper.ReadLine("Новое имя (Enter - оставить прежним): ");
-            if (!string.IsNullOrWhiteSpace(newName))
-            {
-                adopter.FullName = newName;
-            }
+            string firstName = ConsoleHelper.ReadLine("Новое имя (Enter - оставить прежним): ");
+            string lastName = ConsoleHelper.ReadLine("Новая фамилия (Enter - оставить прежним): ");
 
             Console.WriteLine($"Текущий телефон: {adopter.Phone}");
-            string newPhone = ConsoleHelper.ReadLine("Новый телефон (Enter - оставить прежним): ");
-            if (!string.IsNullOrWhiteSpace(newPhone))
-            {
-                adopter.Phone = newPhone;
-            }
+            string phone = ConsoleHelper.ReadLine("Новый телефон (Enter - оставить прежним): ");
 
-            service.UpdateAdopter(adopter);
+            service.UpdateAdopter(id, firstName, lastName, null, phone, null);
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
         static void DeleteAdopter(AdopterService service)
         {
             ConsoleHelper.PrintHeader("УДАЛЕНИЕ УСЫНОВИТЕЛЯ");
-            
             int id = ConsoleHelper.ReadInt("Введите ID усыновителя: ");
-            
             Console.Write("Вы уверены? (yes/no): ");
             if (Console.ReadLine()?.ToLower() == "yes")
             {
                 service.DeleteAdopter(id);
             }
-            
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
@@ -330,8 +312,8 @@ namespace AnimalShelter
                 ConsoleHelper.PrintHeader("УПРАВЛЕНИЕ УСЫНОВЛЕНИЯМИ");
                 Console.WriteLine("1. Просмотр всех заявок");
                 Console.WriteLine("2. Создать заявку на усыновление");
-                Console.WriteLine("3. Одобрить заявку");
-                Console.WriteLine("4. Отклонить заявку");
+                Console.WriteLine("3. Обновить статус заявки");
+                Console.WriteLine("4. Вернуть животное");
                 Console.WriteLine("5. Поиск по статусу");
                 Console.WriteLine("0. Назад");
                 Console.WriteLine();
@@ -347,10 +329,10 @@ namespace AnimalShelter
                         CreateAdoption(service);
                         break;
                     case "3":
-                        ApproveAdoption(service);
+                        UpdateAdoptionStatus(service);
                         break;
                     case "4":
-                        RejectAdoption(service);
+                        ReturnAnimal(service);
                         break;
                     case "5":
                         SearchAdoptionsByStatus(service);
@@ -370,65 +352,71 @@ namespace AnimalShelter
         {
             ConsoleHelper.PrintHeader("СПИСОК ЗАЯВОК НА УСЫНОВЛЕНИЕ");
             var adoptions = service.GetAllAdoptions();
-            
             foreach (var adoption in adoptions)
             {
-                Console.WriteLine($"ID: {adoption.AdoptionId} | Статус: {adoption.Status} | Дата: {adoption.AdoptionDate:dd.MM.yyyy}");
+                Console.WriteLine($"ID: {adoption.AdoptionId} | Статус: {adoption.AdoptionStatus?.StatusName} | Дата: {adoption.AdoptionDate:dd.MM.yyyy}");
             }
-            
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
         static void CreateAdoption(AdoptionService service)
         {
             ConsoleHelper.PrintHeader("СОЗДАНИЕ ЗАЯВКИ НА УСЫНОВЛЕНИЕ");
+            Console.WriteLine("Доступные статусы:");
+            Console.WriteLine("1 - Pending (Ожидает)");
+            Console.WriteLine("2 - Approved (Одобрено)");
+            Console.WriteLine("3 - Rejected (Отклонено)");
+            Console.WriteLine("4 - Cancelled (Отменено)");
+            
+            int adopterId = ConsoleHelper.ReadInt("ID усыновителя: ");
+            int animalId = ConsoleHelper.ReadInt("ID животного: ");
+            int statusId = ConsoleHelper.ReadInt("ID статуса (обычно 1 - Pending): ");
+            string notes = ConsoleHelper.ReadLine("Примечания: ");
 
-            var adoption = new Adoption
-            {
-                AdopterId = ConsoleHelper.ReadInt("ID усыновителя: "),
-                AnimalId = ConsoleHelper.ReadInt("ID животного: "),
-                Notes = ConsoleHelper.ReadLine("Примечания: ")
-            };
-
-            service.CreateAdoption(adoption);
+            service.CreateAdoption(adopterId, animalId, statusId, notes);
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
-        static void ApproveAdoption(AdoptionService service)
+        static void UpdateAdoptionStatus(AdoptionService service)
         {
-            ConsoleHelper.PrintHeader("ОДОБРЕНИЕ ЗАЯВКИ");
-            
+            ConsoleHelper.PrintHeader("ОБНОВЛЕНИЕ СТАТУСА ЗАЯВКИ");
             int id = ConsoleHelper.ReadInt("Введите ID заявки: ");
-            service.ApproveAdoption(id);
+            Console.WriteLine("Доступные статусы:");
+            Console.WriteLine("1 - Pending");
+            Console.WriteLine("2 - Approved");
+            Console.WriteLine("3 - Rejected");
+            Console.WriteLine("4 - Cancelled");
             
+            int newStatusId = ConsoleHelper.ReadInt("Новый ID статуса: ");
+            service.UpdateAdoptionStatus(id, newStatusId);
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
-        static void RejectAdoption(AdoptionService service)
+        static void ReturnAnimal(AdoptionService service)
         {
-            ConsoleHelper.PrintHeader("ОТКЛОНЕНИЕ ЗАЯВКИ");
-            
-            int id = ConsoleHelper.ReadInt("Введите ID заявки: ");
-            string reason = ConsoleHelper.ReadLine("Причина отклонения: ");
-            
-            service.RejectAdoption(id, reason);
+            ConsoleHelper.PrintHeader("ВОЗВРАТ ЖИВОТНОГО");
+            int id = ConsoleHelper.ReadInt("Введите ID усыновления: ");
+            DateTime returnDate = ConsoleHelper.ReadDate("Дата возврата (дд.мм.гггг): ");
+            service.ReturnAnimal(id, returnDate);
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
         static void SearchAdoptionsByStatus(AdoptionService service)
         {
             ConsoleHelper.PrintHeader("ПОИСК ЗАЯВОК ПО СТАТУСУ");
+            Console.WriteLine("Доступные статусы:");
+            Console.WriteLine("1 - Pending");
+            Console.WriteLine("2 - Approved");
+            Console.WriteLine("3 - Rejected");
+            Console.WriteLine("4 - Cancelled");
             
-            Console.WriteLine("Доступные статусы: Pending, Approved, Rejected, Cancelled");
-            string status = ConsoleHelper.ReadLine("Введите статус: ");
-            
-            var adoptions = service.GetAdoptionsByStatus(status);
+            int statusId = ConsoleHelper.ReadInt("Введите ID статуса: ");
+            var adoptions = service.GetAdoptionsByStatus(statusId);
             
             foreach (var adoption in adoptions)
             {
                 Console.WriteLine($"ID: {adoption.AdoptionId} | Дата: {adoption.AdoptionDate:dd.MM.yyyy} | Заметки: {adoption.Notes}");
             }
-            
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
@@ -437,12 +425,11 @@ namespace AnimalShelter
             bool back = false;
             while (!back)
             {
-                ConsoleHelper.PrintHeader("ОТЧЕТЫ И ВЫБОРКИ");
-                Console.WriteLine("1. Животные по статусу");
-                Console.WriteLine("2. Усыновления за период");
-                Console.WriteLine("3. Животные по виду и возрасту");
-                Console.WriteLine("4. Статистика приюта");
-                Console.WriteLine("0. Назад");
+                Console.WriteLine("1. Животные");
+                Console.WriteLine("2. Усыновители");
+                Console.WriteLine("3. Заявки на усыновление");
+                Console.WriteLine("4. Отчеты");
+                Console.WriteLine("0. Выход");
                 Console.WriteLine();
 
                 string choice = ConsoleHelper.ReadLine("Выберите отчет: ");
@@ -476,48 +463,40 @@ namespace AnimalShelter
         static void AnimalsByStatusReport(ReportService service)
         {
             ConsoleHelper.PrintHeader("ОТЧЕТ: ЖИВОТНЫЕ ПО СТАТУСУ");
-            
-            string status = ConsoleHelper.ReadLine("Статус (InShelter/Adopted/Treatment): ");
-            var animals = service.GetAnimalsByStatusReport(status);
-            
+            int statusId = ConsoleHelper.ReadInt("ID статуса (1-4): ");
+            var animals = service.GetAnimalsByStatusReport(statusId);
             Console.WriteLine($"\nНайдено животных: {animals.Count}");
             foreach (var animal in animals)
             {
                 Console.WriteLine($"{animal.Name} ({animal.Species}) - Возраст: {animal.Age}, Дата поступления: {animal.DateAdmitted:dd.MM.yyyy}");
             }
-            
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
         static void AdoptionsByDateReport(ReportService service)
         {
             ConsoleHelper.PrintHeader("ОТЧЕТ: УСЫНОВЛЕНИЯ ЗА ПЕРИОД");
-            
             DateTime startDate = ConsoleHelper.ReadDate("Начальная дата (дд.мм.гггг): ");
             DateTime endDate = ConsoleHelper.ReadDate("Конечная дата (дд.мм.гггг): ");
-            string status = ConsoleHelper.ReadLine("Статус (Pending/Approved/Rejected): ");
+            int statusId = ConsoleHelper.ReadInt("ID статуса (1-4): ");
             
-            var adoptions = service.GetAdoptionsByDateRangeReport(startDate, endDate, status);
-            
+            var adoptions = service.GetAdoptionsByDateRangeReport(startDate, endDate, statusId);
             Console.WriteLine($"\nНайдено заявок: {adoptions.Count}");
             foreach (var adoption in adoptions)
             {
                 Console.WriteLine($"Дата: {adoption.AdoptionDate:dd.MM.yyyy} | Животное: {adoption.Animal?.Name} | Усыновитель: {adoption.Adopter?.FullName}");
             }
-            
             ConsoleHelper.PressAnyKeyToContinue();
         }
 
         static void AnimalsBySpeciesReport(ReportService service)
         {
             ConsoleHelper.PrintHeader("ОТЧЕТ: ЖИВОТНЫЕ ПО ВИДУ И ВОЗРАСТУ");
-            
             string species = ConsoleHelper.ReadLine("Вид (Dog/Cat/Bird и т.д.): ");
             int minAge = ConsoleHelper.ReadInt("Минимальный возраст: ");
             int maxAge = ConsoleHelper.ReadInt("Максимальный возраст: ");
             
             var animals = service.GetAnimalsBySpeciesAndAgeReport(species, minAge, maxAge);
-            
             Console.WriteLine($"\nНайдено животных: {animals.Count}");
             foreach (var animal in animals)
             {
@@ -527,7 +506,6 @@ namespace AnimalShelter
                     Console.WriteLine($"  Мед. карта: {animal.MedicalRecord.RecordNumber}");
                 }
             }
-            
             ConsoleHelper.PressAnyKeyToContinue();
         }
     }

@@ -17,23 +17,25 @@ namespace AnimalShelter.Services
         }
 
         // Выборка 1: Животные по статусу с сортировкой
-        public List<Animal> GetAnimalsByStatusReport(string status)
+        public List<Animal> GetAnimalsByStatusReport(int statusId)
         {
             return _context.Animals
-                .Where(a => a.Status == status)
+                .Include(a => a.AnimalStatus)
+                .Where(a => a.StatusId == statusId)
                 .OrderBy(a => a.DateAdmitted)
                 .ToList();
         }
 
         // Выборка 2: Усыновления по датам с фильтрацией
-        public List<Adoption> GetAdoptionsByDateRangeReport(DateTime startDate, DateTime endDate, string status)
+        public List<Adoption> GetAdoptionsByDateRangeReport(DateTime startDate, DateTime endDate, int statusId)
         {
             return _context.Adoptions
                 .Include(a => a.Animal)
                 .Include(a => a.Adopter)
+                .Include(a => a.AdoptionStatus)
                 .Where(a => a.AdoptionDate >= startDate && 
                            a.AdoptionDate <= endDate && 
-                           a.Status == status)
+                           a.StatusId == statusId)
                 .OrderByDescending(a => a.AdoptionDate)
                 .ToList();
         }
@@ -43,6 +45,7 @@ namespace AnimalShelter.Services
         {
             return _context.Animals
                 .Include(a => a.MedicalRecord)
+                .Include(a => a.AnimalStatus)
                 .Where(a => a.Species == species && 
                            a.Age >= minAge && 
                            a.Age <= maxAge)
@@ -67,9 +70,18 @@ namespace AnimalShelter.Services
         public void DisplayShelterStatistics()
         {
             var totalAnimals = _context.Animals.Count();
-            var inShelter = _context.Animals.Count(a => a.Status == "InShelter");
-            var adopted = _context.Animals.Count(a => a.Status == "Adopted");
-            var inTreatment = _context.Animals.Count(a => a.Status == "Treatment");
+            
+            // Получаем ID статусов из БД
+            var inShelterId = _context.AnimalStatuses
+                .FirstOrDefault(s => s.StatusName == "InShelter")?.StatusId ?? 1;
+            var adoptedId = _context.AnimalStatuses
+                .FirstOrDefault(s => s.StatusName == "Adopted")?.StatusId ?? 2;
+            var treatmentId = _context.AnimalStatuses
+                .FirstOrDefault(s => s.StatusName == "Treatment")?.StatusId ?? 3;
+
+            var inShelter = _context.Animals.Count(a => a.StatusId == inShelterId);
+            var adopted = _context.Animals.Count(a => a.StatusId == adoptedId);
+            var inTreatment = _context.Animals.Count(a => a.StatusId == treatmentId);
 
             Console.WriteLine("\n=== СТАТИСТИКА ПРИЮТА ===");
             Console.WriteLine($"Всего животных: {totalAnimals}");

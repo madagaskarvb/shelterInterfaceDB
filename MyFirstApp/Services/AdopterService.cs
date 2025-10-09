@@ -14,69 +14,58 @@ namespace AnimalShelter.Services
             _adopterRepository = adopterRepository;
         }
 
-        public void AddAdopter(Adopter adopter)
+        public void RegisterAdopter(string firstName, string lastName, string email, string phone, string address)
         {
-            try
+            var adopter = new Adopter
             {
-                // Проверка на дубликат email
-                var existingAdopter = _adopterRepository.GetByEmail(adopter.Email);
-                if (existingAdopter != null)
-                {
-                    Console.WriteLine("Усыновитель с таким email уже существует!");
-                    return;
-                }
+                FirstName = firstName,
+                LastName = lastName,
+                Email = email,
+                Phone = phone,
+                Address = address,
+                RegistrationDate = DateTime.Now
+            };
 
-                _adopterRepository.Add(adopter);
-                _adopterRepository.SaveChanges();
-                Console.WriteLine($"Усыновитель '{adopter.FullName}' успешно зарегистрирован!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при добавлении усыновителя: {ex.Message}");
-            }
+            _adopterRepository.Add(adopter);
+            _adopterRepository.SaveChanges();
+            Console.WriteLine($"Усыновитель {firstName} {lastName} зарегистрирован успешно!");
         }
 
-        public Adopter GetAdopterById(int id)
+        public void UpdateAdopter(int adopterId, string firstName, string lastName, string email, string phone, string address)
         {
-            return _adopterRepository.GetById(id);
+            var adopter = _adopterRepository.GetById(adopterId);
+            if (adopter == null)
+            {
+                Console.WriteLine("Усыновитель не найден!");
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(firstName)) adopter.FirstName = firstName;
+            if (!string.IsNullOrEmpty(lastName)) adopter.LastName = lastName;
+            if (!string.IsNullOrEmpty(email)) adopter.Email = email;
+            if (!string.IsNullOrEmpty(phone)) adopter.Phone = phone;
+            if (!string.IsNullOrEmpty(address)) adopter.Address = address;
+
+            _adopterRepository.Update(adopter);
+            _adopterRepository.SaveChanges();
+            Console.WriteLine($"Данные усыновителя {adopter.FullName} обновлены!");
+        }
+
+        public void DeleteAdopter(int adopterId)
+        {
+            _adopterRepository.Delete(adopterId);
+            _adopterRepository.SaveChanges();
+            Console.WriteLine("Усыновитель удален!");
+        }
+
+        public Adopter GetAdopterById(int adopterId)
+        {
+            return _adopterRepository.GetById(adopterId);
         }
 
         public IEnumerable<Adopter> GetAllAdopters()
         {
             return _adopterRepository.GetAll();
-        }
-
-        public Adopter GetAdopterByEmail(string email)
-        {
-            return _adopterRepository.GetByEmail(email);
-        }
-
-        public void UpdateAdopter(Adopter adopter)
-        {
-            try
-            {
-                _adopterRepository.Update(adopter);
-                _adopterRepository.SaveChanges();
-                Console.WriteLine("Информация об усыновителе обновлена!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при обновлении: {ex.Message}");
-            }
-        }
-
-        public void DeleteAdopter(int id)
-        {
-            try
-            {
-                _adopterRepository.Delete(id);
-                _adopterRepository.SaveChanges();
-                Console.WriteLine("Усыновитель удален из системы!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при удалении: {ex.Message}");
-            }
         }
     }
 }
