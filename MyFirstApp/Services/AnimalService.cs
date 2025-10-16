@@ -1,81 +1,81 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using AnimalShelter.Interfaces;
-using AnimalShelter.Models;
+using Microsoft.EntityFrameworkCore;
+using AnimalShelterCLI.Data;
+using AnimalShelterCLI.Models;
 
-namespace AnimalShelter.Services
+namespace AnimalShelterCLI.Services
 {
     public class AnimalService
     {
-        private readonly IAnimalRepository _animalRepository;
+        private readonly ShelterContext _context;
 
-        public AnimalService(IAnimalRepository animalRepository)
+        public AnimalService(ShelterContext context)
         {
-            _animalRepository = animalRepository;
+            _context = context;
         }
 
-        public void AddAnimal(string name, int age, string species, string breed, string gender, int statusId, string description)
+        public List<Animal> GetAllAnimals()
         {
-            var animal = new Animal
-            {
-                Name = name,
-                Age = age,
-                Species = species,
-                Breed = breed,
-                Gender = gender,
-                StatusId = statusId,
-                Description = description,
-                DateAdmitted = DateTime.Now
-            };
-
-            _animalRepository.Add(animal);
-            _animalRepository.SaveChanges();
-            Console.WriteLine($"Животное {name} добавлено в приют!");
+            return _context.Animals
+                .Include(a => a.Status)
+                .ToList();
         }
 
-        public void UpdateAnimal(int animalId, string name, int? age, string species, string breed, string gender, int? statusId, string description)
+        public Animal GetAnimalById(int id)
         {
-            var animal = _animalRepository.GetById(animalId);
-            if (animal == null)
+            return _context.Animals
+                .Include(a => a.Status)
+                .Include(a => a.MedicalRecord)
+                .FirstOrDefault(a => a.AnimalId == id);
+        }
+
+        public List<Animal> SearchAnimals(string searchTerm)
+        {
+            return _context.Animals
+                .Include(a => a.Status)
+                .Where(a => a.Name.Contains(searchTerm) || 
+                           a.Species.Contains(searchTerm) || 
+                           a.Breed.Contains(searchTerm))
+                .ToList();
+        }
+
+        public List<Animal> GetAnimalsByStatus(int statusId)
+        {
+            return _context.Animals
+                .Include(a => a.Status)
+                .Where(a => a.StatusId == statusId)
+                .ToList();
+        }
+
+        public void AddAnimal(Animal animal)
+        {
+            animal.DateAdmitted = DateTime.Now;
+            animal.CreatedAt = DateTime.Now;
+            _context.Animals.Add(animal);
+            _context.SaveChanges();
+        }
+
+        public void UpdateAnimal(Animal animal)
+        {
+            _context.Animals.Update(animal);
+            _context.SaveChanges();
+        }
+
+        public void DeleteAnimal(int id)
+        {
+            var animal = _context.Animals.Find(id);
+            if (animal != null)
             {
-                Console.WriteLine("Животное не найдено!");
-                return;
+                _context.Animals.Remove(animal);
+                _context.SaveChanges();
             }
-
-            if (!string.IsNullOrEmpty(name)) animal.Name = name;
-            if (age.HasValue) animal.Age = age.Value;
-            if (!string.IsNullOrEmpty(species)) animal.Species = species;
-            if (!string.IsNullOrEmpty(breed)) animal.Breed = breed;
-            if (!string.IsNullOrEmpty(gender)) animal.Gender = gender;
-            if (statusId.HasValue) animal.StatusId = statusId.Value;
-            if (!string.IsNullOrEmpty(description)) animal.Description = description;
-
-            _animalRepository.Update(animal);
-            _animalRepository.SaveChanges();
-            Console.WriteLine($"Данные животного {animal.Name} обновлены!");
         }
 
-        public void DeleteAnimal(int animalId)
+        public List<AnimalStatus> GetAllStatuses()
         {
-            _animalRepository.Delete(animalId);
-            _animalRepository.SaveChanges();
-            Console.WriteLine("Животное удалено из системы!");
-        }
-
-        public Animal GetAnimalById(int animalId)
-        {
-            return _animalRepository.GetById(animalId);
-        }
-
-        public IEnumerable<Animal> GetAllAnimals()
-        {
-            return _animalRepository.GetAll();
-        }
-
-        public IEnumerable<Animal> GetAnimalsByStatus(int statusId)
-        {
-            return _animalRepository.GetAnimalsByStatus(statusId);
+            return _context.AnimalStatuses.ToList();
         }
     }
 }

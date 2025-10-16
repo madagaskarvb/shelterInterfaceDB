@@ -1,71 +1,67 @@
 using System;
 using System.Collections.Generic;
-using AnimalShelter.Interfaces;
-using AnimalShelter.Models;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
+using AnimalShelterCLI.Data;
+using AnimalShelterCLI.Models;
 
-namespace AnimalShelter.Services
+namespace AnimalShelterCLI.Services
 {
     public class AdopterService
     {
-        private readonly IAdopterRepository _adopterRepository;
+        private readonly ShelterContext _context;
 
-        public AdopterService(IAdopterRepository adopterRepository)
+        public AdopterService(ShelterContext context)
         {
-            _adopterRepository = adopterRepository;
+            _context = context;
         }
 
-        public void RegisterAdopter(string firstName, string lastName, string email, string phone, string address)
+        public List<Adopter> GetAllAdopters()
         {
-            var adopter = new Adopter
-            {
-                FirstName = firstName,
-                LastName = lastName,
-                Email = email,
-                Phone = phone,
-                Address = address,
-                RegistrationDate = DateTime.Now
-            };
-
-            _adopterRepository.Add(adopter);
-            _adopterRepository.SaveChanges();
-            Console.WriteLine($"Усыновитель {firstName} {lastName} зарегистрирован успешно!");
+            return _context.Adopters
+                .Include(a => a.Adoptions)
+                .ToList();
         }
 
-        public void UpdateAdopter(int adopterId, string firstName, string lastName, string email, string phone, string address)
+        public Adopter GetAdopterById(int id)
         {
-            var adopter = _adopterRepository.GetById(adopterId);
-            if (adopter == null)
+            return _context.Adopters
+                .Include(a => a.Adoptions)
+                    .ThenInclude(ad => ad.Animal)
+                .FirstOrDefault(a => a.AdopterId == id);
+        }
+
+        public List<Adopter> SearchAdopters(string searchTerm)
+        {
+            return _context.Adopters
+                .Where(a => a.FirstName.Contains(searchTerm) || 
+                           a.LastName.Contains(searchTerm) ||
+                           a.Email.Contains(searchTerm))
+                .ToList();
+        }
+
+        public void AddAdopter(Adopter adopter)
+        {
+            adopter.RegistrationDate = DateTime.Now;
+            adopter.CreatedAt = DateTime.Now;
+            _context.Adopters.Add(adopter);
+            _context.SaveChanges();
+        }
+
+        public void UpdateAdopter(Adopter adopter)
+        {
+            _context.Adopters.Update(adopter);
+            _context.SaveChanges();
+        }
+
+        public void DeleteAdopter(int id)
+        {
+            var adopter = _context.Adopters.Find(id);
+            if (adopter != null)
             {
-                Console.WriteLine("Усыновитель не найден!");
-                return;
+                _context.Adopters.Remove(adopter);
+                _context.SaveChanges();
             }
-
-            if (!string.IsNullOrEmpty(firstName)) adopter.FirstName = firstName;
-            if (!string.IsNullOrEmpty(lastName)) adopter.LastName = lastName;
-            if (!string.IsNullOrEmpty(email)) adopter.Email = email;
-            if (!string.IsNullOrEmpty(phone)) adopter.Phone = phone;
-            if (!string.IsNullOrEmpty(address)) adopter.Address = address;
-
-            _adopterRepository.Update(adopter);
-            _adopterRepository.SaveChanges();
-            Console.WriteLine($"Данные усыновителя {adopter.FullName} обновлены!");
-        }
-
-        public void DeleteAdopter(int adopterId)
-        {
-            _adopterRepository.Delete(adopterId);
-            _adopterRepository.SaveChanges();
-            Console.WriteLine("Усыновитель удален!");
-        }
-
-        public Adopter GetAdopterById(int adopterId)
-        {
-            return _adopterRepository.GetById(adopterId);
-        }
-
-        public IEnumerable<Adopter> GetAllAdopters()
-        {
-            return _adopterRepository.GetAll();
         }
     }
 }

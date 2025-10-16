@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Development\\shelterInterfaceDB\\MyFirstApp\\MyFirstApp.csproj": {}
+    "/Users/sip/Development/shelterInterfaceDB/MyFirstApp/MyFirstApp.csproj": {}
   },
   "projects": {
-    "D:\\Development\\shelterInterfaceDB\\MyFirstApp\\MyFirstApp.csproj": {
+    "/Users/sip/Development/shelterInterfaceDB/MyFirstApp/MyFirstApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Development\\shelterInterfaceDB\\MyFirstApp\\MyFirstApp.csproj",
+        "projectUniqueName": "/Users/sip/Development/shelterInterfaceDB/MyFirstApp/MyFirstApp.csproj",
         "projectName": "MyFirstApp",
-        "projectPath": "D:\\Development\\shelterInterfaceDB\\MyFirstApp\\MyFirstApp.csproj",
-        "packagesPath": "C:\\Users\\ilyap\\.nuget\\packages\\",
-        "outputPath": "D:\\Development\\shelterInterfaceDB\\MyFirstApp\\obj\\",
+        "projectPath": "/Users/sip/Development/shelterInterfaceDB/MyFirstApp/MyFirstApp.csproj",
+        "packagesPath": "/Users/sip/.nuget/packages/",
+        "outputPath": "/Users/sip/Development/shelterInterfaceDB/MyFirstApp/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\ilyap\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "/Users/sip/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
@@ -46,23 +46,23 @@
           "dependencies": {
             "Microsoft.EntityFrameworkCore": {
               "target": "Package",
-              "version": "[9.0.0, )"
+              "version": "[9.0.1, )"
             },
             "Microsoft.EntityFrameworkCore.Design": {
               "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "suppressParent": "All",
               "target": "Package",
-              "version": "[9.0.0, )"
+              "version": "[9.0.1, )"
             },
             "Microsoft.EntityFrameworkCore.Tools": {
               "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "suppressParent": "All",
               "target": "Package",
-              "version": "[9.0.0, )"
+              "version": "[9.0.1, )"
             },
             "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",
-              "version": "[9.0.0, )"
+              "version": "[9.0.1, )"
             }
           },
           "imports": [
@@ -81,7 +81,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.305/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

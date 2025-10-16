@@ -1,86 +1,84 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using AnimalShelter.Interfaces;
-using AnimalShelter.Models;
+using Microsoft.EntityFrameworkCore;
+using AnimalShelterCLI.Data;
+using AnimalShelterCLI.Models;
 
-namespace AnimalShelter.Services
+namespace AnimalShelterCLI.Services
 {
     public class AdoptionService
     {
-        private readonly IAdoptionRepository _adoptionRepository;
-        private readonly IAnimalRepository _animalRepository;
+        private readonly ShelterContext _context;
 
-        public AdoptionService(IAdoptionRepository adoptionRepository, IAnimalRepository animalRepository)
+        public AdoptionService(ShelterContext context)
         {
-            _adoptionRepository = adoptionRepository;
-            _animalRepository = animalRepository;
+            _context = context;
         }
 
-        public void CreateAdoption(int adopterId, int animalId, int statusId, string notes)
+        public List<Adoption> GetAllAdoptions()
         {
-            var adoption = new Adoption
-            {
-                AdopterId = adopterId,
-                AnimalId = animalId,
-                AdoptionDate = DateTime.Now,
-                StatusId = statusId,
-                Notes = notes
-            };
-
-            _adoptionRepository.Add(adoption);
-            _adoptionRepository.SaveChanges();
-            Console.WriteLine("Заявка на усыновление создана!");
+            return _context.Adoptions
+                .Include(a => a.Adopter)
+                .Include(a => a.Animal)
+                .Include(a => a.Status)
+                .ToList();
         }
 
-        public void UpdateAdoptionStatus(int adoptionId, int newStatusId)
+        public Adoption GetAdoptionById(int id)
         {
-            var adoption = _adoptionRepository.GetById(adoptionId);
-            if (adoption == null)
+            return _context.Adoptions
+                .Include(a => a.Adopter)
+                .Include(a => a.Animal)
+                .Include(a => a.Status)
+                .FirstOrDefault(a => a.AdoptionId == id);
+        }
+
+        public List<Adoption> GetAdoptionsByAdopter(int adopterId)
+        {
+            return _context.Adoptions
+                .Include(a => a.Animal)
+                .Include(a => a.Status)
+                .Where(a => a.AdopterId == adopterId)
+                .ToList();
+        }
+
+        public List<Adoption> GetAdoptionsByStatus(int statusId)
+        {
+            return _context.Adoptions
+                .Include(a => a.Adopter)
+                .Include(a => a.Animal)
+                .Where(a => a.StatusId == statusId)
+                .ToList();
+        }
+
+        public void CreateAdoption(Adoption adoption)
+        {
+            adoption.AdoptionDate = DateTime.Now;
+            adoption.CreatedAt = DateTime.Now;
+            _context.Adoptions.Add(adoption);
+            _context.SaveChanges();
+        }
+
+        public void UpdateAdoption(Adoption adoption)
+        {
+            _context.Adoptions.Update(adoption);
+            _context.SaveChanges();
+        }
+
+        public void DeleteAdoption(int id)
+        {
+            var adoption = _context.Adoptions.Find(id);
+            if (adoption != null)
             {
-                Console.WriteLine("Усыновление не найдено!");
-                return;
+                _context.Adoptions.Remove(adoption);
+                _context.SaveChanges();
             }
-
-            adoption.StatusId = newStatusId;
-            _adoptionRepository.Update(adoption);
-            _adoptionRepository.SaveChanges();
-            Console.WriteLine($"Статус усыновления обновлен!");
         }
 
-        public void ReturnAnimal(int adoptionId, DateTime returnDate)
+        public List<AdoptionStatus> GetAllStatuses()
         {
-            var adoption = _adoptionRepository.GetById(adoptionId);
-            if (adoption == null)
-            {
-                Console.WriteLine("Усыновление не найдено!");
-                return;
-            }
-
-            adoption.ReturnDate = returnDate;
-            _adoptionRepository.Update(adoption);
-            _adoptionRepository.SaveChanges();
-            Console.WriteLine("Животное возвращено в приют!");
-        }
-
-        public Adoption GetAdoptionById(int adoptionId)
-        {
-            return _adoptionRepository.GetById(adoptionId);
-        }
-
-        public IEnumerable<Adoption> GetAllAdoptions()
-        {
-            return _adoptionRepository.GetAll();
-        }
-
-        public IEnumerable<Adoption> GetAdoptionsByAdopter(int adopterId)
-        {
-            return _adoptionRepository.GetAdoptionsByAdopter(adopterId);
-        }
-
-        public IEnumerable<Adoption> GetAdoptionsByStatus(int statusId)
-        {
-            return _adoptionRepository.GetAdoptionsByStatus(statusId);
+            return _context.AdoptionStatuses.ToList();
         }
     }
 }
