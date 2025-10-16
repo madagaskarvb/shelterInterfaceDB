@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AnimalShelterCLI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fafb4c0a4f8a962744f3e840e73a99afdffd3d51")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c36fba00ab65a5980a863e30da6184abac4cbec3")]
 [assembly: System.Reflection.AssemblyProductAttribute("AnimalShelterCLI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AnimalShelterCLI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -2782,19 +2782,19 @@
     ]
   },
   "packageFolders": {
-    "/Users/sip/.nuget/packages/": {}
+    "C:\\Users\\ilyap\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/sip/Development/shelterInterfaceDB/MyFirstApp/AnimalShelterCLI.csproj",
+      "projectUniqueName": "D:\\Development\\shelterInterfaceDB\\MyFirstApp\\AnimalShelterCLI.csproj",
       "projectName": "AnimalShelterCLI",
-      "projectPath": "/Users/sip/Development/shelterInterfaceDB/MyFirstApp/AnimalShelterCLI.csproj",
-      "packagesPath": "/Users/sip/.nuget/packages/",
-      "outputPath": "/Users/sip/Development/shelterInterfaceDB/MyFirstApp/obj/",
+      "projectPath": "D:\\Development\\shelterInterfaceDB\\MyFirstApp\\AnimalShelterCLI.csproj",
+      "packagesPath": "C:\\Users\\ilyap\\.nuget\\packages\\",
+      "outputPath": "D:\\Development\\shelterInterfaceDB\\MyFirstApp\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/sip/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\ilyap\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
@@ -2851,7 +2851,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.305/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

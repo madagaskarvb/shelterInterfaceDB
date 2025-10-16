@@ -3,6 +3,8 @@ using System.Linq;
 using AnimalShelterCLI.Data;
 using AnimalShelterCLI.Models;
 using AnimalShelterCLI.Services;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace AnimalShelterCLI.UI
 {
@@ -45,50 +47,106 @@ namespace AnimalShelterCLI.UI
         }
 
         public void AddAnimal()
+    {
+        MenuHelper.PrintHeader("Добавление нового животного");
+
+        try
         {
-            MenuHelper.PrintHeader("Добавление нового животного");
+            var animal = new Animal();
 
-            try
+            Console.Write("Имя: ");
+            animal.Name = Console.ReadLine();
+
+            Console.Write("Вид (собака, кошка, и т.д.): ");
+            animal.Species = Console.ReadLine();
+
+            Console.Write("Порода: ");
+            animal.Breed = Console.ReadLine();
+
+            Console.Write("Возраст (лет): ");
+            if (int.TryParse(Console.ReadLine(), out int age))
+                animal.Age = age;
+
+            // ИСПРАВЛЕНО: Валидация и нормализация пола
+            Console.WriteLine("\nВыберите пол:");
+            Console.WriteLine("1. Male (Мужской)");
+            Console.WriteLine("2. Female (Женский)");
+            Console.WriteLine("3. Unknown (Неизвестно)");
+            Console.Write("Ваш выбор (1-3): ");
+
+            var genderChoice = Console.ReadLine();
+            animal.Gender = genderChoice switch
             {
-                var animal = new Animal();
+                "1" => "Male",
+                "2" => "Female",
+                "3" => "Unknown",
+                _ => "Unknown" // По умолчанию
+            };
 
-                Console.Write("Имя: ");
-                animal.Name = Console.ReadLine();
+            Console.Write("Описание: ");
+            animal.Description = Console.ReadLine();
 
-                Console.Write("Вид (собака, кошка, и т.д.): ");
-                animal.Species = Console.ReadLine();
+            // Выбор статуса
+            var statuses = _animalService.GetAllStatuses();
 
-                Console.Write("Порода: ");
-                animal.Breed = Console.ReadLine();
-
-                Console.Write("Возраст (лет): ");
-                if (int.TryParse(Console.ReadLine(), out int age))
-                    animal.Age = age;
-
-                Console.Write("Пол (Male/Female/Unknown): ");
-                animal.Gender = Console.ReadLine();
-
-                Console.Write("Описание: ");
-                animal.Description = Console.ReadLine();
-
-                // Выбор статуса
-                var statuses = _animalService.GetAllStatuses();
-                Console.WriteLine("\nДоступные статусы:");
-                foreach (var status in statuses)
-                {
-                    Console.WriteLine($"{status.StatusId}. {status.StatusName}");
-                }
-                Console.Write("Выберите ID статуса: ");
-                animal.StatusId = int.Parse(Console.ReadLine());
-
-                _animalService.AddAnimal(animal);
-                MenuHelper.PrintSuccess("Животное успешно добавлено!");
-            }
-            catch (Exception ex)
+            if (!statuses.Any())
             {
-                MenuHelper.PrintError($"Ошибка при добавлении: {ex.Message}");
+                MenuHelper.PrintError("В базе данных нет доступных статусов! Сначала добавьте статусы.");
+                return;
             }
+
+            Console.WriteLine("\nДоступные статусы:");
+            foreach (var status in statuses)
+            {
+                Console.WriteLine($"{status.StatusId}. {status.StatusName}");
+            }
+            Console.Write("Выберите ID статуса: ");
+
+            if (!int.TryParse(Console.ReadLine(), out int statusId))
+            {
+                MenuHelper.PrintError("Неверный ID статуса");
+                return;
+            }
+
+            animal.StatusId = statusId;
+
+            _animalService.AddAnimal(animal);
+            MenuHelper.PrintSuccess($"Животное '{animal.Name}' успешно добавлено!");
         }
+        catch (DbUpdateException dbEx)
+        {
+            // Получаем детали ошибки базы данных
+            var innerException = dbEx.InnerException;
+
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("\n=== ДЕТАЛИ ОШИБКИ БД ===");
+            Console.WriteLine($"Сообщение: {dbEx.Message}");
+
+            if (innerException != null)
+            {
+                Console.WriteLine($"\nВнутреннее исключение: {innerException.GetType().Name}");
+                Console.WriteLine($"Сообщение БД: {innerException.Message}");
+
+                // Для PostgreSQL
+                if (innerException is Npgsql.PostgresException pgEx)
+                {
+                    Console.WriteLine($"SQL State: {pgEx.SqlState}");
+                    Console.WriteLine($"Constraint: {pgEx.ConstraintName}");
+                    Console.WriteLine($"Table: {pgEx.TableName}");
+                    Console.WriteLine($"Detail: {pgEx.Detail}");
+                }
+            }
+            Console.ResetColor();
+
+            MenuHelper.PrintError("Ошибка при добавлении животного. Проверьте данные выше.");
+        }
+        catch (Exception ex)
+        {
+            MenuHelper.PrintError($"Ошибка при добавлении: {ex.Message}");
+            Console.WriteLine($"\nТип ошибки: {ex.GetType().Name}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        }
+    }
 
         public void UpdateAnimal()
         {

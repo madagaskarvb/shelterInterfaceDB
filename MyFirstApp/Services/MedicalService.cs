@@ -27,16 +27,16 @@ namespace AnimalShelterCLI.Services
 
         public void CreateMedicalRecord(MedicalRecord record)
         {
-            record.CreatedDate = DateTime.Now;
-            record.CreatedAt = DateTime.Now;
-            record.UpdatedAt = DateTime.Now;
+            record.CreatedDate = DateTime.UtcNow;
+            record.CreatedAt = DateTime.UtcNow;
+            record.UpdatedAt = DateTime.UtcNow;
             _context.MedicalRecords.Add(record);
             _context.SaveChanges();
         }
 
         public void UpdateMedicalRecord(MedicalRecord record)
         {
-            record.UpdatedAt = DateTime.Now;
+            record.UpdatedAt = DateTime.UtcNow;
             _context.MedicalRecords.Update(record);
             _context.SaveChanges();
         }
@@ -58,15 +58,15 @@ namespace AnimalShelterCLI.Services
 
         public void AddVaccination(Vaccination vaccination)
         {
-            vaccination.CreatedAt = DateTime.Now;
+            vaccination.CreatedAt =  DateTime.UtcNow;
             _context.Vaccinations.Add(vaccination);
             _context.SaveChanges();
         }
 
         public void AddAnimalVaccination(AnimalVaccination animalVaccination)
         {
-            animalVaccination.VaccinationDate = DateTime.Now;
-            animalVaccination.CreatedAt = DateTime.Now;
+            animalVaccination.VaccinationDate = DateTime.UtcNow; 
+            animalVaccination.CreatedAt = DateTime.UtcNow;
             _context.AnimalVaccinations.Add(animalVaccination);
             _context.SaveChanges();
         }

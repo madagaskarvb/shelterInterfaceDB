@@ -51,8 +51,8 @@ namespace AnimalShelterCLI.Services
 
         public void AddAnimal(Animal animal)
         {
-            animal.DateAdmitted = DateTime.Now;
-            animal.CreatedAt = DateTime.Now;
+            animal.DateAdmitted = DateTime.UtcNow;
+            animal.CreatedAt = DateTime.UtcNow;  
             _context.Animals.Add(animal);
             _context.SaveChanges();
         }

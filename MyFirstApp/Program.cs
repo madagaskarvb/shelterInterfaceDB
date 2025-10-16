@@ -9,11 +9,11 @@ namespace AnimalShelterCLI
         static void Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-            
+
             try
             {
                 using var context = new ShelterContext();
-                
+
                 // Проверка подключения к БД
                 if (context.Database.CanConnect())
                 {
@@ -102,6 +102,9 @@ namespace AnimalShelterCLI
                 Console.WriteLine($"Детали: {ex.StackTrace}");
                 Console.ResetColor();
             }
+            
         }
     }
 }
+
+

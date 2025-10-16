@@ -54,8 +54,8 @@ namespace AnimalShelterCLI.Services
 
         public void CreateAdoption(Adoption adoption)
         {
-            adoption.AdoptionDate = DateTime.Now;
-            adoption.CreatedAt = DateTime.Now;
+            adoption.AdoptionDate = DateTime.UtcNow;  
+            adoption.CreatedAt = DateTime.UtcNow;
             _context.Adoptions.Add(adoption);
             _context.SaveChanges();
         }
