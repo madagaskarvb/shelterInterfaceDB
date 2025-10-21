@@ -35,7 +35,6 @@ namespace AnimalShelterCLI
                 {
                     context.AnimalStatuses.AddRange(
                         new AnimalStatus { StatusId = 1, StatusName = "Available" }
-                        // При желании добавьте ещё: new AnimalStatus { StatusId = 2, StatusName = "Adopted" }, ...
                     );
                 }
 
@@ -44,7 +43,6 @@ namespace AnimalShelterCLI
                 {
                     context.AdoptionStatuses.AddRange(
                         new AdoptionStatus { StatusId = 1, StatusName = "Pending" }
-                        // При желании добавьте ещё: new AdoptionStatus { StatusId = 2, StatusName = "Approved" }, ...
                     );
                 }
 
@@ -52,10 +50,8 @@ namespace AnimalShelterCLI
 
                 var handlers = new MenuHandlers(context);
 
-                // Создание главного меню
                 var mainMenu = new Menu("Система управления приютом для животных");
 
-                // Меню животных
                 mainMenu.AddSubMenu("Управление животными", () =>
                 {
                     var animalMenu = new Menu("Управление животными");
@@ -68,7 +64,6 @@ namespace AnimalShelterCLI
                     return animalMenu;
                 });
 
-                // Меню усыновителей
                 mainMenu.AddSubMenu("Управление усыновителями", () =>
                 {
                     var adopterMenu = new Menu("Управление усыновителями");
@@ -79,7 +74,6 @@ namespace AnimalShelterCLI
                     return adopterMenu;
                 });
 
-                // Меню усыновлений
                 mainMenu.AddSubMenu("Управление усыновлениями", () =>
                 {
                     var adoptionMenu = new Menu("Управление усыновлениями");
@@ -89,7 +83,6 @@ namespace AnimalShelterCLI
                     return adoptionMenu;
                 });
 
-                // Меню медицинских записей
                 mainMenu.AddSubMenu("Медицинские записи", () =>
                 {
                     var medicalMenu = new Menu("Медицинские записи");
@@ -102,7 +95,6 @@ namespace AnimalShelterCLI
                     return medicalMenu;
                 });
 
-                // Меню отчетов
                 mainMenu.AddSubMenu("Отчеты и статистика", () =>
                 {
                     var reportMenu = new Menu("Отчеты и статистика");
@@ -113,7 +105,6 @@ namespace AnimalShelterCLI
 
                 mainMenu.AddItem("Запустить тесты", () => new TestRunner(context).RunAllTests());
 
-                // Запуск главного меню
                 mainMenu.Display();
                 Console.WriteLine("\nДо свидания!");
             }

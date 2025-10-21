@@ -131,8 +131,7 @@ namespace AnimalShelterCLI.Services
         public static bool ValidatePhone(string phone)
         {
             if (string.IsNullOrWhiteSpace(phone)) return false;
-        
-            // Верный паттерн для verbatim-строки: один backslash перед спецпоследовательностями
+
             const string pattern = @"^(\+?[1-9]\d{5,14}|8\d{10})$";
             var compact = Regex.Replace(phone, @"\s+", "");
             return Regex.IsMatch(compact, pattern);
