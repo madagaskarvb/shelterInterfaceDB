@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq; // Добавьте эту строку
 using AnimalShelterCLI.Data;
+using AnimalShelterCLI.Models; // Добавьте эту строку
 using AnimalShelterCLI.UI;
 
 namespace AnimalShelterCLI
@@ -9,11 +11,10 @@ namespace AnimalShelterCLI
         static void Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-
             try
             {
                 using var context = new ShelterContext();
-
+                
                 // Проверка подключения к БД
                 if (context.Database.CanConnect())
                 {
@@ -28,6 +29,26 @@ namespace AnimalShelterCLI
                     Console.ResetColor();
                     return;
                 }
+
+                // Инициализация статусов животных
+                if (!context.AnimalStatuses.Any())
+                {
+                    context.AnimalStatuses.AddRange(
+                        new AnimalStatus { StatusId = 1, StatusName = "Available" }
+                        // При желании добавьте ещё: new AnimalStatus { StatusId = 2, StatusName = "Adopted" }, ...
+                    );
+                }
+
+                // Инициализация статусов усыновления
+                if (!context.AdoptionStatuses.Any())
+                {
+                    context.AdoptionStatuses.AddRange(
+                        new AdoptionStatus { StatusId = 1, StatusName = "Pending" }
+                        // При желании добавьте ещё: new AdoptionStatus { StatusId = 2, StatusName = "Approved" }, ...
+                    );
+                }
+
+                context.SaveChanges();
 
                 var handlers = new MenuHandlers(context);
 
@@ -90,9 +111,10 @@ namespace AnimalShelterCLI
                     return reportMenu;
                 });
 
+                mainMenu.AddItem("Запустить тесты", () => new TestRunner(context).RunAllTests());
+
                 // Запуск главного меню
                 mainMenu.Display();
-
                 Console.WriteLine("\nДо свидания!");
             }
             catch (Exception ex)
@@ -102,9 +124,6 @@ namespace AnimalShelterCLI
                 Console.WriteLine($"Детали: {ex.StackTrace}");
                 Console.ResetColor();
             }
-            
         }
     }
 }
-
-

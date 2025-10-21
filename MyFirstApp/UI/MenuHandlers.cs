@@ -1,10 +1,10 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using AnimalShelterCLI.Data;
 using AnimalShelterCLI.Models;
 using AnimalShelterCLI.Services;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace AnimalShelterCLI.UI
 {
@@ -23,270 +23,356 @@ namespace AnimalShelterCLI.UI
             _medicalService = new MedicalService(context);
         }
 
+        #region Helpers
+
+        private static string ReadNonEmpty(string prompt)
+        {
+            Console.Write(prompt);
+            var s = Console.ReadLine();
+            return s ?? string.Empty;
+        }
+
+        private static string ReadOptional(string prompt, string current = "")
+        {
+            Console.Write(prompt);
+            var s = Console.ReadLine();
+            return string.IsNullOrWhiteSpace(s) ? (current ?? string.Empty) : s;
+        }
+
+        private static int? ReadIntOptional(string prompt, int? current = null)
+        {
+            Console.Write(prompt);
+            var text = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(text)) return current;
+            if (int.TryParse(text, out var val)) return val;
+            return current;
+        }
+
+        private static int ReadIntRequired(string prompt)
+        {
+            while (true)
+            {
+                Console.Write(prompt);
+                var text = Console.ReadLine();
+                if (int.TryParse(text, out var val))
+                    return val;
+
+                MenuHelper.PrintError("Введите корректное целое число.");
+            }
+        }
+
+        private static DateTime? ReadDateOptional(string prompt, DateTime? current = null)
+        {
+            Console.Write(prompt);
+            var text = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(text)) return current;
+            if (DateTime.TryParse(text, out var dt)) return dt;
+            return current;
+        }
+
+        private static bool Confirm(string prompt)
+        {
+            Console.Write($"{prompt} (y/n): ");
+            var ans = (Console.ReadLine() ?? string.Empty).Trim().ToLowerInvariant();
+            return ans == "y" || ans == "yes" || ans == "д" || ans == "да";
+        }
+
+        private static string ChooseGender(string current = "Unknown")
+        {
+            Console.WriteLine("\nВыберите пол:");
+            Console.WriteLine("1. Male (Мужской)");
+            Console.WriteLine("2. Female (Женский)");
+            Console.WriteLine("3. Unknown (Неизвестно)");
+            Console.Write("Ваш выбор (Enter — оставить без изменений): ");
+            var choice = Console.ReadLine();
+
+            if (string.IsNullOrWhiteSpace(choice)) return string.IsNullOrWhiteSpace(current) ? "Unknown" : current;
+
+            return choice switch
+            {
+                "1" => "Male",
+                "2" => "Female",
+                "3" => "Unknown",
+                _ => string.IsNullOrWhiteSpace(current) ? "Unknown" : current
+            };
+        }
+
+        private static T? ChooseFromList<T>(IList<T> items, Func<T, string> render, string title, string emptyMessage)
+        {
+            MenuHelper.PrintHeader(title);
+            if (items == null || items.Count == 0)
+            {
+                MenuHelper.PrintInfo(emptyMessage);
+                return default;
+            }
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {render(items[i])}");
+            }
+
+            Console.Write("Выберите номер: ");
+            if (!int.TryParse(Console.ReadLine(), out var idx) || idx < 1 || idx > items.Count)
+            {
+                MenuHelper.PrintError("Неверный выбор.");
+                return default;
+            }
+
+            return items[idx - 1];
+        }
+
+        private AnimalStatus? ChooseAnimalStatus(int? currentStatusId = null)
+        {
+            var statuses = _animalService.GetAllStatuses();
+            if (!statuses.Any())
+            {
+                MenuHelper.PrintError("В базе нет статусов животных. Сначала добавьте статусы.");
+                return null;
+            }
+
+            Console.WriteLine("\nДоступные статусы:");
+            foreach (var s in statuses)
+            {
+                var mark = (currentStatusId.HasValue && s.StatusId == currentStatusId.Value) ? " (текущий)" : "";
+                Console.WriteLine($"{s.StatusId}. {s.StatusName}{mark}");
+            }
+            Console.Write("Выберите ID статуса (Enter — без изменений): ");
+            var text = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(text))
+                return statuses.FirstOrDefault(x => x.StatusId == currentStatusId);
+
+            if (!int.TryParse(text, out var statusId))
+            {
+                MenuHelper.PrintError("Неверный ID статуса.");
+                return null;
+            }
+
+            var status = statuses.FirstOrDefault(x => x.StatusId == statusId);
+            if (status == null) MenuHelper.PrintError("Статус не найден.");
+            return status;
+        }
+
+        private AdoptionStatus? ChooseAdoptionStatus(int? currentStatusId = null)
+        {
+            var statuses = _adoptionService.GetAllStatuses();
+            if (!statuses.Any())
+            {
+                MenuHelper.PrintError("В базе нет статусов усыновления.");
+                return null;
+            }
+
+            Console.WriteLine("\nДоступные статусы усыновления:");
+            foreach (var s in statuses)
+            {
+                var mark = (currentStatusId.HasValue && s.StatusId == currentStatusId.Value) ? " (текущий)" : "";
+                Console.WriteLine($"{s.StatusId}. {s.StatusName}{mark}");
+            }
+            Console.Write("Выберите ID статуса (Enter — без изменений): ");
+            var text = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(text))
+                return statuses.FirstOrDefault(x => x.StatusId == currentStatusId);
+
+            if (!int.TryParse(text, out var statusId))
+            {
+                MenuHelper.PrintError("Неверный ID статуса.");
+                return null;
+            }
+
+            var status = statuses.FirstOrDefault(x => x.StatusId == statusId);
+            if (status == null) MenuHelper.PrintError("Статус не найден.");
+            return status;
+        }
+
+        #endregion
+
         #region Animal Management
 
         public void ListAllAnimals()
         {
             MenuHelper.PrintHeader("Список всех животных");
             var animals = _animalService.GetAllAnimals();
-
             if (!animals.Any())
             {
                 MenuHelper.PrintInfo("Нет животных в базе данных.");
                 return;
             }
 
-            Console.WriteLine($"{"ID",-5} {"Имя",-20} {"Вид",-15} {"Порода",-15} {"Возраст",-8} {"Статус",-15}");
-            Console.WriteLine(new string('-', 85));
-
-            foreach (var animal in animals)
+            Console.WriteLine($"{ "ID",-5} {"Имя",-20} {"Вид",-15} {"Порода",-15} {"Возраст",-8} {"Пол",-8} {"Статус",-20}");
+            Console.WriteLine(new string('-', 100));
+            foreach (var a in animals)
             {
-                Console.WriteLine($"{animal.AnimalId,-5} {animal.Name,-20} {animal.Species,-15} " +
-                                $"{animal.Breed,-15} {animal.Age,-8} {animal.Status?.StatusName,-15}");
+                Console.WriteLine($"{a.AnimalId,-5} {a.Name,-20} {a.Species,-15} {a.Breed,-15} {a.Age,-8} {a.Gender,-8} {a.Status?.StatusName,-20}");
             }
         }
 
         public void AddAnimal()
-    {
-        MenuHelper.PrintHeader("Добавление нового животного");
-
-        try
         {
-            var animal = new Animal();
-
-            Console.Write("Имя: ");
-            animal.Name = Console.ReadLine();
-
-            Console.Write("Вид (собака, кошка, и т.д.): ");
-            animal.Species = Console.ReadLine();
-
-            Console.Write("Порода: ");
-            animal.Breed = Console.ReadLine();
-
-            Console.Write("Возраст (лет): ");
-            if (int.TryParse(Console.ReadLine(), out int age))
-                animal.Age = age;
-
-            // ИСПРАВЛЕНО: Валидация и нормализация пола
-            Console.WriteLine("\nВыберите пол:");
-            Console.WriteLine("1. Male (Мужской)");
-            Console.WriteLine("2. Female (Женский)");
-            Console.WriteLine("3. Unknown (Неизвестно)");
-            Console.Write("Ваш выбор (1-3): ");
-
-            var genderChoice = Console.ReadLine();
-            animal.Gender = genderChoice switch
+            MenuHelper.PrintHeader("Добавление нового животного");
+            try
             {
-                "1" => "Male",
-                "2" => "Female",
-                "3" => "Unknown",
-                _ => "Unknown" // По умолчанию
-            };
+                var animal = new Animal();
+                animal.Name = ReadNonEmpty("Имя: ");
+                animal.Species = ReadNonEmpty("Вид (собака, кошка и т.д.): ");
+                animal.Breed = ReadOptional("Порода: ");
+                animal.Age = ReadIntOptional("Возраст (лет): ");
+                animal.Gender = ChooseGender("Unknown");
+                animal.Description = ReadOptional("Описание: ");
 
-            Console.Write("Описание: ");
-            animal.Description = Console.ReadLine();
+                var status = ChooseAnimalStatus();
+                if (status == null) return;
+                animal.StatusId = status.StatusId;
 
-            // Выбор статуса
-            var statuses = _animalService.GetAllStatuses();
-
-            if (!statuses.Any())
-            {
-                MenuHelper.PrintError("В базе данных нет доступных статусов! Сначала добавьте статусы.");
-                return;
+                _animalService.AddAnimal(animal);
+                MenuHelper.PrintSuccess($"Животное '{animal.Name}' успешно добавлено (ID={animal.AnimalId}).");
             }
-
-            Console.WriteLine("\nДоступные статусы:");
-            foreach (var status in statuses)
+            catch (DbUpdateException dbEx)
             {
-                Console.WriteLine($"{status.StatusId}. {status.StatusName}");
-            }
-            Console.Write("Выберите ID статуса: ");
-
-            if (!int.TryParse(Console.ReadLine(), out int statusId))
-            {
-                MenuHelper.PrintError("Неверный ID статуса");
-                return;
-            }
-
-            animal.StatusId = statusId;
-
-            _animalService.AddAnimal(animal);
-            MenuHelper.PrintSuccess($"Животное '{animal.Name}' успешно добавлено!");
-        }
-        catch (DbUpdateException dbEx)
-        {
-            // Получаем детали ошибки базы данных
-            var innerException = dbEx.InnerException;
-
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("\n=== ДЕТАЛИ ОШИБКИ БД ===");
-            Console.WriteLine($"Сообщение: {dbEx.Message}");
-
-            if (innerException != null)
-            {
-                Console.WriteLine($"\nВнутреннее исключение: {innerException.GetType().Name}");
-                Console.WriteLine($"Сообщение БД: {innerException.Message}");
-
-                // Для PostgreSQL
-                if (innerException is Npgsql.PostgresException pgEx)
+                MenuHelper.PrintError($"Ошибка при добавлении животного: {dbEx.Message}");
+                if (dbEx.InnerException != null)
                 {
-                    Console.WriteLine($"SQL State: {pgEx.SqlState}");
-                    Console.WriteLine($"Constraint: {pgEx.ConstraintName}");
-                    Console.WriteLine($"Table: {pgEx.TableName}");
-                    Console.WriteLine($"Detail: {pgEx.Detail}");
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Внутренняя ошибка: {dbEx.InnerException.GetType().Name}: {dbEx.InnerException.Message}");
+                    Console.ResetColor();
                 }
             }
-            Console.ResetColor();
-
-            MenuHelper.PrintError("Ошибка при добавлении животного. Проверьте данные выше.");
+            catch (Exception ex)
+            {
+                MenuHelper.PrintError($"Ошибка при добавлении: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-            MenuHelper.PrintError($"Ошибка при добавлении: {ex.Message}");
-            Console.WriteLine($"\nТип ошибки: {ex.GetType().Name}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-        }
-    }
 
         public void UpdateAnimal()
         {
             MenuHelper.PrintHeader("Обновление информации о животном");
-
-            Console.Write("Введите ID животного: ");
-            if (!int.TryParse(Console.ReadLine(), out int id))
-            {
-                MenuHelper.PrintError("Неверный ID");
-                return;
-            }
-
+            var id = ReadIntRequired("Введите ID животного: ");
             var animal = _animalService.GetAnimalById(id);
             if (animal == null)
             {
-                MenuHelper.PrintError("Животное не найдено");
+                MenuHelper.PrintError("Животное не найдено.");
                 return;
             }
 
-            Console.WriteLine($"\nТекущие данные: {animal.Name}, {animal.Species}, возраст {animal.Age}");
-            Console.WriteLine("\nОставьте поле пустым, чтобы не изменять значение");
+            Console.WriteLine($"\nТекущие данные: {animal.Name}, {animal.Species}, возраст {animal.Age}, пол {animal.Gender}, статус {animal.Status?.StatusName}");
 
-            Console.Write($"Имя [{animal.Name}]: ");
-            var name = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(name)) animal.Name = name;
+            animal.Name = ReadOptional($"Имя ({animal.Name}): ", animal.Name);
+            animal.Species = ReadOptional($"Вид ({animal.Species}): ", animal.Species);
+            animal.Breed = ReadOptional($"Порода ({animal.Breed ?? "—"}): ", animal.Breed ?? "");
+            animal.Age = ReadIntOptional($"Возраст ({animal.Age?.ToString() ?? "—"}): ", animal.Age);
+            animal.Gender = ChooseGender(animal.Gender);
+            animal.Description = ReadOptional($"Описание ({animal.Description ?? "—"}): ", animal.Description ?? "");
 
-            Console.Write($"Вид [{animal.Species}]: ");
-            var species = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(species)) animal.Species = species;
+            var status = ChooseAnimalStatus(animal.StatusId);
+            if (status == null) return;
+            animal.StatusId = status.StatusId;
 
-            Console.Write($"Порода [{animal.Breed}]: ");
-            var breed = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(breed)) animal.Breed = breed;
-
-            Console.Write($"Возраст [{animal.Age}]: ");
-            if (int.TryParse(Console.ReadLine(), out int age)) animal.Age = age;
-
-            var statuses = _animalService.GetAllStatuses();
-            Console.WriteLine("\nДоступные статусы:");
-            foreach (var status in statuses)
+            try
             {
-                Console.WriteLine($"{status.StatusId}. {status.StatusName}");
+                _animalService.UpdateAnimal(animal);
+                MenuHelper.PrintSuccess("Данные животного обновлены.");
             }
-            Console.Write($"Статус [{animal.StatusId}]: ");
-            if (int.TryParse(Console.ReadLine(), out int statusId)) animal.StatusId = statusId;
-
-            _animalService.UpdateAnimal(animal);
-            MenuHelper.PrintSuccess("Данные успешно обновлены!");
+            catch (Exception ex)
+            {
+                MenuHelper.PrintError($"Ошибка: {ex.Message}");
+            }
         }
 
         public void DeleteAnimal()
         {
             MenuHelper.PrintHeader("Удаление животного");
-
-            Console.Write("Введите ID животного: ");
-            if (!int.TryParse(Console.ReadLine(), out int id))
-            {
-                MenuHelper.PrintError("Неверный ID");
-                return;
-            }
-
+            var id = ReadIntRequired("Введите ID животного: ");
             var animal = _animalService.GetAnimalById(id);
             if (animal == null)
             {
-                MenuHelper.PrintError("Животное не найдено");
+                MenuHelper.PrintError("Животное не найдено.");
                 return;
             }
 
-            Console.WriteLine($"\nВы уверены, что хотите удалить: {animal.Name}? (да/нет)");
-            var confirm = Console.ReadLine()?.ToLower();
+            if (!Confirm($"Удалить '{animal.Name}' (ID={animal.AnimalId})?"))
+            {
+                MenuHelper.PrintInfo("Операция отменена.");
+                return;
+            }
 
-            if (confirm == "да" || confirm == "yes")
+            try
             {
                 _animalService.DeleteAnimal(id);
-                MenuHelper.PrintSuccess("Животное удалено");
+                MenuHelper.PrintSuccess("Животное удалено.");
             }
-            else
+            catch (Exception ex)
             {
-                MenuHelper.PrintInfo("Удаление отменено");
+                MenuHelper.PrintError($"Ошибка удаления: {ex.Message}");
             }
         }
 
         public void SearchAnimals()
         {
             MenuHelper.PrintHeader("Поиск животных");
-
-            Console.Write("Введите поисковый запрос (имя, вид, порода): ");
-            var searchTerm = Console.ReadLine();
-
-            var animals = _animalService.SearchAnimals(searchTerm);
-
-            if (!animals.Any())
+            Console.Write("Введите строку поиска (имя/вид/порода): ");
+            var term = Console.ReadLine() ?? string.Empty;
+            var result = _animalService.SearchAnimals(term);
+            if (!result.Any())
             {
-                MenuHelper.PrintInfo("Животные не найдены");
+                MenuHelper.PrintInfo("Ничего не найдено.");
                 return;
             }
 
-            Console.WriteLine($"\nНайдено животных: {animals.Count}");
-            Console.WriteLine($"{"ID",-5} {"Имя",-20} {"Вид",-15} {"Порода",-15}");
-            Console.WriteLine(new string('-', 60));
-
-            foreach (var animal in animals)
+            Console.WriteLine($"{ "ID",-5} {"Имя",-20} {"Вид",-15} {"Порода",-15} {"Возраст",-8} {"Пол",-8} {"Статус",-20}");
+            Console.WriteLine(new string('-', 100));
+            foreach (var a in result)
             {
-                Console.WriteLine($"{animal.AnimalId,-5} {animal.Name,-20} {animal.Species,-15} {animal.Breed,-15}");
+                Console.WriteLine($"{a.AnimalId,-5} {a.Name,-20} {a.Species,-15} {a.Breed,-15} {a.Age,-8} {a.Gender,-8} {a.Status?.StatusName,-20}");
             }
         }
 
         public void ViewAnimalDetails()
         {
             MenuHelper.PrintHeader("Детальная информация о животном");
-
-            Console.Write("Введите ID животного: ");
-            if (!int.TryParse(Console.ReadLine(), out int id))
-            {
-                MenuHelper.PrintError("Неверный ID");
-                return;
-            }
-
+            var id = ReadIntRequired("Введите ID животного: ");
             var animal = _animalService.GetAnimalById(id);
             if (animal == null)
             {
-                MenuHelper.PrintError("Животное не найдено");
+                MenuHelper.PrintError("Животное не найдено.");
                 return;
             }
 
-            Console.WriteLine($"\n{"Параметр",-25} {"Значение"}");
-            Console.WriteLine(new string('-', 60));
-            Console.WriteLine($"{"ID:",-25} {animal.AnimalId}");
-            Console.WriteLine($"{"Имя:",-25} {animal.Name}");
-            Console.WriteLine($"{"Вид:",-25} {animal.Species}");
-            Console.WriteLine($"{"Порода:",-25} {animal.Breed}");
-            Console.WriteLine($"{"Возраст:",-25} {animal.Age}");
-            Console.WriteLine($"{"Пол:",-25} {animal.Gender}");
-            Console.WriteLine($"{"Статус:",-25} {animal.Status?.StatusName}");
-            Console.WriteLine($"{"Дата поступления:",-25} {animal.DateAdmitted:dd.MM.yyyy}");
-            Console.WriteLine($"{"Описание:",-25} {animal.Description}");
+            Console.WriteLine($"ID: {animal.AnimalId}");
+            Console.WriteLine($"Имя: {animal.Name}");
+            Console.WriteLine($"Вид: {animal.Species}");
+            Console.WriteLine($"Порода: {animal.Breed}");
+            Console.WriteLine($"Возраст: {animal.Age}");
+            Console.WriteLine($"Пол: {animal.Gender}");
+            Console.WriteLine($"Статус: {animal.Status?.StatusName}");
+            Console.WriteLine($"Описание: {animal.Description}");
+            Console.WriteLine($"Поступил: {animal.DateAdmitted:dd.MM.yyyy}");
+            Console.WriteLine();
 
-            if (animal.MedicalRecord != null)
+            var med = _medicalService.GetMedicalRecordByAnimalId(animal.AnimalId);
+            if (med == null)
             {
-                Console.WriteLine($"\n{"Медицинская карта:",-25} ID {animal.MedicalRecord.RecordNumber}");
+                MenuHelper.PrintInfo("Медицинская карта отсутствует.");
+                return;
+            }
+
+            Console.WriteLine($"Мед. карта #{med.RecordNumber}, создана: {med.CreatedDate:dd.MM.yyyy}");
+            if (!string.IsNullOrWhiteSpace(med.BloodType)) Console.WriteLine($"Группа крови: {med.BloodType}");
+            if (!string.IsNullOrWhiteSpace(med.Allergies)) Console.WriteLine($"Аллергии: {med.Allergies}");
+            if (!string.IsNullOrWhiteSpace(med.ChronicConditions)) Console.WriteLine($"Хронические: {med.ChronicConditions}");
+            if (!string.IsNullOrWhiteSpace(med.SpecialNeeds)) Console.WriteLine($"Особые нужды: {med.SpecialNeeds}");
+            if (!string.IsNullOrWhiteSpace(med.VeterinarianNotes)) Console.WriteLine($"Заметки ветеринара: {med.VeterinarianNotes}");
+            Console.WriteLine();
+
+            var vacs = _medicalService.GetVaccinationsByAnimal(animal.AnimalId);
+            if (!vacs.Any())
+            {
+                MenuHelper.PrintInfo("Прививки не зарегистрированы.");
+                return;
+            }
+
+            Console.WriteLine($"{ "Дата",-12} {"Вакцина",-25} {"Партия",-15} {"Ветврач",-20} {"След. дата",-12}");
+            Console.WriteLine(new string('-', 90));
+            foreach (var v in vacs)
+            {
+                Console.WriteLine($"{v.VaccinationDate:dd.MM.yyyy,-12} {v.Vaccination?.VaccineName,-25} {v.BatchNumber,-15} {v.VeterinarianName,-20} {v.NextDueDate:dd.MM.yyyy,-12}");
             }
         }
 
@@ -297,136 +383,113 @@ namespace AnimalShelterCLI.UI
         public void ListAllAdopters()
         {
             MenuHelper.PrintHeader("Список усыновителей");
-            var adopters = _adopterService.GetAllAdopters();
-
-            if (!adopters.Any())
+            var list = _adopterService.GetAllAdopters();
+            if (!list.Any())
             {
-                MenuHelper.PrintInfo("Нет зарегистрированных усыновителей");
+                MenuHelper.PrintInfo("Усыновителей нет.");
                 return;
             }
 
-            Console.WriteLine($"{"ID",-5} {"Имя",-20} {"Фамилия",-20} {"Email",-30} {"Телефон",-15}");
-            Console.WriteLine(new string('-', 95));
-
-            foreach (var adopter in adopters)
+            Console.WriteLine($"{ "ID",-5} {"Имя",-15} {"Фамилия",-18} {"E-mail",-28} {"Телефон",-16} {"Статус",-10}");
+            Console.WriteLine(new string('-', 100));
+            foreach (var a in list)
             {
-                Console.WriteLine($"{adopter.AdopterId,-5} {adopter.FirstName,-20} {adopter.LastName,-20} " +
-                                $"{adopter.Email,-30} {adopter.Phone,-15}");
+                Console.WriteLine($"{a.AdopterId,-5} {a.FirstName,-15} {a.LastName,-18} {a.Email,-28} {a.Phone,-16} {a.ApprovalStatus,-10}");
             }
         }
 
         public void AddAdopter()
         {
             MenuHelper.PrintHeader("Регистрация нового усыновителя");
-
             try
             {
-                var adopter = new Adopter();
-
-                Console.Write("Имя: ");
-                adopter.FirstName = Console.ReadLine();
-
-                Console.Write("Фамилия: ");
-                adopter.LastName = Console.ReadLine();
-
-                Console.Write("Email: ");
-                adopter.Email = Console.ReadLine();
-
-                Console.Write("Телефон: ");
-                adopter.Phone = Console.ReadLine();
-
-                Console.Write("Адрес: ");
-                adopter.Address = Console.ReadLine();
+                var adopter = new Adopter
+                {
+                    FirstName = ReadNonEmpty("Имя: "),
+                    LastName = ReadNonEmpty("Фамилия: "),
+                    Email = ReadNonEmpty("E-mail: "),
+                    Phone = ReadNonEmpty("Телефон (+7..., 8...): "),
+                    Address = ReadNonEmpty("Адрес: ")
+                };
 
                 _adopterService.AddAdopter(adopter);
-                MenuHelper.PrintSuccess("Усыновитель успешно зарегистрирован!");
+                MenuHelper.PrintSuccess($"Усыновитель добавлен (ID={adopter.AdopterId}).");
+            }
+            catch (ArgumentException aex)
+            {
+                MenuHelper.PrintError(aex.Message);
             }
             catch (Exception ex)
             {
-                MenuHelper.PrintError($"Ошибка при регистрации: {ex.Message}");
+                MenuHelper.PrintError($"Ошибка добавления: {ex.Message}");
             }
         }
 
         public void UpdateAdopter()
         {
             MenuHelper.PrintHeader("Обновление данных усыновителя");
-
-            Console.Write("Введите ID усыновителя: ");
-            if (!int.TryParse(Console.ReadLine(), out int id))
-            {
-                MenuHelper.PrintError("Неверный ID");
-                return;
-            }
-
+            var id = ReadIntRequired("Введите ID усыновителя: ");
             var adopter = _adopterService.GetAdopterById(id);
             if (adopter == null)
             {
-                MenuHelper.PrintError("Усыновитель не найден");
+                MenuHelper.PrintError("Усыновитель не найден.");
                 return;
             }
 
-            Console.WriteLine($"\nТекущие данные: {adopter.FirstName} {adopter.LastName}");
-            Console.WriteLine("Оставьте поле пустым, чтобы не изменять значение\n");
+            adopter.FirstName = ReadOptional($"Имя ({adopter.FirstName}): ", adopter.FirstName);
+            adopter.LastName = ReadOptional($"Фамилия ({adopter.LastName}): ", adopter.LastName);
+            adopter.Email = ReadOptional($"E-mail ({adopter.Email}): ", adopter.Email);
+            adopter.Phone = ReadOptional($"Телефон ({adopter.Phone}): ", adopter.Phone);
+            adopter.Address = ReadOptional($"Адрес ({adopter.Address}): ", adopter.Address);
 
-            Console.Write($"Имя [{adopter.FirstName}]: ");
-            var firstName = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(firstName)) adopter.FirstName = firstName;
-
-            Console.Write($"Фамилия [{adopter.LastName}]: ");
-            var lastName = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(lastName)) adopter.LastName = lastName;
-
-            Console.Write($"Email [{adopter.Email}]: ");
-            var email = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(email)) adopter.Email = email;
-
-            Console.Write($"Телефон [{adopter.Phone}]: ");
-            var phone = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(phone)) adopter.Phone = phone;
-
-            Console.Write($"Адрес [{adopter.Address}]: ");
-            var address = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(address)) adopter.Address = address;
-
-            _adopterService.UpdateAdopter(adopter);
-            MenuHelper.PrintSuccess("Данные успешно обновлены!");
+            try
+            {
+                _adopterService.UpdateAdopter(adopter);
+                MenuHelper.PrintSuccess("Данные усыновителя обновлены.");
+            }
+            catch (ArgumentException aex)
+            {
+                MenuHelper.PrintError(aex.Message);
+            }
+            catch (Exception ex)
+            {
+                MenuHelper.PrintError($"Ошибка: {ex.Message}");
+            }
         }
 
         public void ViewAdopterDetails()
         {
-            MenuHelper.PrintHeader("Информация об усыновителе");
-
-            Console.Write("Введите ID усыновителя: ");
-            if (!int.TryParse(Console.ReadLine(), out int id))
-            {
-                MenuHelper.PrintError("Неверный ID");
-                return;
-            }
-
+            MenuHelper.PrintHeader("Детальная информация об усыновителе");
+            var id = ReadIntRequired("Введите ID усыновителя: ");
             var adopter = _adopterService.GetAdopterById(id);
             if (adopter == null)
             {
-                MenuHelper.PrintError("Усыновитель не найден");
+                MenuHelper.PrintError("Усыновитель не найден.");
                 return;
             }
 
-            Console.WriteLine($"\n{"Параметр",-25} {"Значение"}");
-            Console.WriteLine(new string('-', 60));
-            Console.WriteLine($"{"ID:",-25} {adopter.AdopterId}");
-            Console.WriteLine($"{"Имя:",-25} {adopter.FirstName}");
-            Console.WriteLine($"{"Фамилия:",-25} {adopter.LastName}");
-            Console.WriteLine($"{"Email:",-25} {adopter.Email}");
-            Console.WriteLine($"{"Телефон:",-25} {adopter.Phone}");
-            Console.WriteLine($"{"Адрес:",-25} {adopter.Address}");
-            Console.WriteLine($"{"Дата регистрации:",-25} {adopter.RegistrationDate:dd.MM.yyyy}");
+            Console.WriteLine($"ID: {adopter.AdopterId}");
+            Console.WriteLine($"Имя: {adopter.FirstName}");
+            Console.WriteLine($"Фамилия: {adopter.LastName}");
+            Console.WriteLine($"E-mail: {adopter.Email}");
+            Console.WriteLine($"Телефон: {adopter.Phone}");
+            Console.WriteLine($"Адрес: {adopter.Address}");
+            Console.WriteLine($"Статус: {adopter.ApprovalStatus}");
+            Console.WriteLine();
 
-            if (adopter.Adoptions != null && adopter.Adoptions.Any())
+            var adoptions = adopter.Adoptions?.ToList() ?? new List<Adoption>();
+            if (!adoptions.Any())
             {
-                Console.WriteLine($"\n{"Усыновленные животные:",-25} {adopter.Adoptions.Count}");
-                foreach (var adoption in adopter.Adoptions)
-                {
-                    Console.WriteLine($"  - {adoption.Animal?.Name} ({adoption.AdoptionDate:dd.MM.yyyy})");
-                }
+                MenuHelper.PrintInfo("История усыновлений отсутствует.");
+                return;
+            }
+
+            Console.WriteLine($"{ "ID",-5} {"Животное",-20} {"Дата",-12} {"Статус",-18} {"Возврат",-12} {"Заметки",-25}");
+            Console.WriteLine(new string('-', 100));
+            foreach (var ad in adoptions)
+            {
+                var returnDate = ad.ReturnDate?.ToString("dd.MM.yyyy") ?? "—";
+                Console.WriteLine($"{ad.AdoptionId,-5} {ad.Animal?.Name,-20} {ad.AdoptionDate:dd.MM.yyyy,-12} {ad.Status?.StatusName,-18} {returnDate,-12} {ad.Notes,-25}");
             }
         }
 
@@ -437,22 +500,20 @@ namespace AnimalShelterCLI.UI
         public void ListAllAdoptions()
         {
             MenuHelper.PrintHeader("Список усыновлений");
-            var adoptions = _adoptionService.GetAllAdoptions();
-
-            if (!adoptions.Any())
+            var list = _adoptionService.GetAllAdoptions();
+            if (!list.Any())
             {
-                MenuHelper.PrintInfo("Нет записей об усыновлениях");
+                MenuHelper.PrintInfo("Записей об усыновлениях нет.");
                 return;
             }
 
-            Console.WriteLine($"{"ID",-5} {"Животное",-20} {"Усыновитель",-25} {"Дата",-12} {"Статус",-15}");
-            Console.WriteLine(new string('-', 85));
-
-            foreach (var adoption in adoptions)
+            Console.WriteLine($"{ "ID",-5} {"Усыновитель",-25} {"Животное",-20} {"Дата",-12} {"Статус",-18} {"Возврат",-12}");
+            Console.WriteLine(new string('-', 100));
+            foreach (var ad in list)
             {
-                var adopterName = $"{adoption.Adopter?.FirstName} {adoption.Adopter?.LastName}";
-                Console.WriteLine($"{adoption.AdoptionId,-5} {adoption.Animal?.Name,-20} {adopterName,-25} " +
-                                $"{adoption.AdoptionDate:dd.MM.yyyy,-12} {adoption.Status?.StatusName,-15}");
+                var adopterName = ad.Adopter != null ? $"{ad.Adopter.FirstName} {ad.Adopter.LastName}" : "-";
+                var returnDate = ad.ReturnDate?.ToString("dd.MM.yyyy") ?? "—";
+                Console.WriteLine($"{ad.AdoptionId,-5} {adopterName,-25} {ad.Animal?.Name,-20} {ad.AdoptionDate:dd.MM.yyyy,-12} {ad.Status?.StatusName,-18} {returnDate,-12}");
             }
         }
 
@@ -460,156 +521,68 @@ namespace AnimalShelterCLI.UI
         {
             MenuHelper.PrintHeader("Создание записи об усыновлении");
 
+            var adopterId = ReadIntRequired("ID усыновителя: ");
+            var animalId = ReadIntRequired("ID животного: ");
+
+            var status = ChooseAdoptionStatus();
+            if (status == null) return;
+
+            var adoption = new Adoption
+            {
+                AdopterId = adopterId,
+                AnimalId = animalId,
+                StatusId = status.StatusId,
+                Notes = ReadOptional("Заметки (необязательно): ")
+            };
+
             try
             {
-                var adoption = new Adoption();
-
-                Console.Write("ID животного: ");
-                adoption.AnimalId = int.Parse(Console.ReadLine());
-
-                Console.Write("ID усыновителя: ");
-                adoption.AdopterId = int.Parse(Console.ReadLine());
-
-                var statuses = _adoptionService.GetAllStatuses();
-                Console.WriteLine("\nДоступные статусы:");
-                foreach (var status in statuses)
-                {
-                    Console.WriteLine($"{status.StatusId}. {status.StatusName}");
-                }
-                Console.Write("Выберите ID статуса: ");
-                adoption.StatusId = int.Parse(Console.ReadLine());
-
-                Console.Write("Примечания: ");
-                adoption.Notes = Console.ReadLine();
-
                 _adoptionService.CreateAdoption(adoption);
-                MenuHelper.PrintSuccess("Запись об усыновлении создана!");
+                MenuHelper.PrintSuccess($"Запись создана (ID={adoption.AdoptionId}).");
             }
             catch (Exception ex)
             {
-                MenuHelper.PrintError($"Ошибка: {ex.Message}");
+                MenuHelper.PrintError($"Ошибка создания: {ex.Message}");
             }
         }
 
         public void UpdateAdoption()
         {
             MenuHelper.PrintHeader("Обновление статуса усыновления");
-
-            Console.Write("Введите ID усыновления: ");
-            if (!int.TryParse(Console.ReadLine(), out int id))
-            {
-                MenuHelper.PrintError("Неверный ID");
-                return;
-            }
-
-            var adoption = _adoptionService.GetAdoptionById(id);
+            var adoptionId = ReadIntRequired("Введите ID записи: ");
+            var adoption = _adoptionService.GetAdoptionById(adoptionId);
             if (adoption == null)
             {
-                MenuHelper.PrintError("Запись не найдена");
+                MenuHelper.PrintError("Запись об усыновлении не найдена.");
                 return;
             }
 
-            Console.WriteLine($"\nТекущий статус: {adoption.Status?.StatusName}");
+            Console.WriteLine($"Текущий статус: {adoption.Status?.StatusName}");
+            var status = ChooseAdoptionStatus(adoption.StatusId);
+            if (status == null) return;
 
-            var statuses = _adoptionService.GetAllStatuses();
-            Console.WriteLine("\nДоступные статусы:");
-            foreach (var status in statuses)
+            adoption.StatusId = status.StatusId;
+            adoption.Notes = ReadOptional($"Заметки ({adoption.Notes ?? "—"}): ", adoption.Notes ?? "");
+
+            Console.Write("Дата возврата (дд.мм.гггг, Enter — без изменений/очистить): ");
+            var rdText = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(rdText))
             {
-                Console.WriteLine($"{status.StatusId}. {status.StatusName}");
+                // без изменений
             }
-            Console.Write("Выберите новый статус: ");
-            if (int.TryParse(Console.ReadLine(), out int statusId))
+            else if (rdText.Trim().Equals("-", StringComparison.OrdinalIgnoreCase))
             {
-                adoption.StatusId = statusId;
+                adoption.ReturnDate = null;
             }
-
-            Console.Write("Обновить примечания? (да/нет): ");
-            if (Console.ReadLine()?.ToLower() == "да")
+            else if (DateTime.TryParse(rdText, out var rd))
             {
-                Console.Write("Новые примечания: ");
-                adoption.Notes = Console.ReadLine();
+                adoption.ReturnDate = rd;
             }
-
-            _adoptionService.UpdateAdoption(adoption);
-            MenuHelper.PrintSuccess("Статус усыновления обновлен!");
-        }
-
-        #endregion
-
-        #region Medical Management
-
-        public void ViewMedicalRecord()
-        {
-            MenuHelper.PrintHeader("Просмотр медицинской карты");
-
-            Console.Write("Введите ID животного: ");
-            if (!int.TryParse(Console.ReadLine(), out int animalId))
-            {
-                MenuHelper.PrintError("Неверный ID");
-                return;
-            }
-
-            var record = _medicalService.GetMedicalRecordByAnimalId(animalId);
-            if (record == null)
-            {
-                MenuHelper.PrintInfo("Медицинская карта не найдена");
-                return;
-            }
-
-            Console.WriteLine($"\n{"Параметр",-25} {"Значение"}");
-            Console.WriteLine(new string('-', 60));
-            Console.WriteLine($"{"Номер карты:",-25} {record.RecordNumber}");
-            Console.WriteLine($"{"Животное:",-25} {record.Animal?.Name}");
-            Console.WriteLine($"{"Группа крови:",-25} {record.BloodType}");
-            Console.WriteLine($"{"Аллергии:",-25} {record.Allergies}");
-            Console.WriteLine($"{"Хрон. заболевания:",-25} {record.ChronicConditions}");
-            Console.WriteLine($"{"Особые потребности:",-25} {record.SpecialNeeds}");
-            Console.WriteLine($"{"Последний осмотр:",-25} {record.LastCheckupDate:dd.MM.yyyy}");
-            Console.WriteLine($"{"Заметки ветеринара:",-25} {record.VeterinarianNotes}");
-
-            if (record.AnimalVaccinations != null && record.AnimalVaccinations.Any())
-            {
-                Console.WriteLine("\nВакцинации:");
-                foreach (var vac in record.AnimalVaccinations)
-                {
-                    Console.WriteLine($"  - {vac.Vaccination?.VaccineName} " +
-                                    $"(дата: {vac.VaccinationDate:dd.MM.yyyy}, " +
-                                    $"след.: {vac.NextDueDate:dd.MM.yyyy})");
-                }
-            }
-        }
-
-        public void CreateMedicalRecord()
-        {
-            MenuHelper.PrintHeader("Создание медицинской карты");
 
             try
             {
-                var record = new MedicalRecord();
-
-                Console.Write("ID животного: ");
-                record.AnimalId = int.Parse(Console.ReadLine());
-
-                Console.Write("Номер карты: ");
-                record.RecordNumber = Console.ReadLine();
-
-                Console.Write("Группа крови: ");
-                record.BloodType = Console.ReadLine();
-
-                Console.Write("Аллергии: ");
-                record.Allergies = Console.ReadLine();
-
-                Console.Write("Хронические заболевания: ");
-                record.ChronicConditions = Console.ReadLine();
-
-                Console.Write("Особые потребности: ");
-                record.SpecialNeeds = Console.ReadLine();
-
-                Console.Write("Заметки ветеринара: ");
-                record.VeterinarianNotes = Console.ReadLine();
-
-                _medicalService.CreateMedicalRecord(record);
-                MenuHelper.PrintSuccess("Медицинская карта создана!");
+                _adoptionService.UpdateAdoption(adoption);
+                MenuHelper.PrintSuccess("Статус усыновления обновлён.");
             }
             catch (Exception ex)
             {
@@ -617,43 +590,126 @@ namespace AnimalShelterCLI.UI
             }
         }
 
-        public void AddVaccinationRecord()
+        #endregion
+
+        #region Medical
+
+        public void ViewMedicalRecord()
         {
-            MenuHelper.PrintHeader("Добавление записи о вакцинации");
+            MenuHelper.PrintHeader("Просмотр медицинской карты");
+            var animalId = ReadIntRequired("ID животного: ");
+            var record = _medicalService.GetMedicalRecordByAnimalId(animalId);
+            if (record == null)
+            {
+                MenuHelper.PrintInfo("Медицинская карта не найдена.");
+                return;
+            }
+
+            Console.WriteLine($"Животное: {record.Animal?.Name} (ID={record.AnimalId})");
+            Console.WriteLine($"№ карты: {record.RecordNumber}");
+            Console.WriteLine($"Создана: {record.CreatedDate:dd.MM.yyyy}");
+            if (!string.IsNullOrWhiteSpace(record.BloodType)) Console.WriteLine($"Группа крови: {record.BloodType}");
+            if (!string.IsNullOrWhiteSpace(record.Allergies)) Console.WriteLine($"Аллергии: {record.Allergies}");
+            if (!string.IsNullOrWhiteSpace(record.ChronicConditions)) Console.WriteLine($"Хронические заболевания: {record.ChronicConditions}");
+            if (!string.IsNullOrWhiteSpace(record.SpecialNeeds)) Console.WriteLine($"Особые нужды: {record.SpecialNeeds}");
+            if (!string.IsNullOrWhiteSpace(record.VeterinarianNotes)) Console.WriteLine($"Заметки врача: {record.VeterinarianNotes}");
+            if (record.LastCheckupDate.HasValue) Console.WriteLine($"Последний осмотр: {record.LastCheckupDate:dd.MM.yyyy}");
+            Console.WriteLine();
+
+            var vacs = _medicalService.GetVaccinationsByAnimal(animalId);
+            if (!vacs.Any())
+            {
+                MenuHelper.PrintInfo("Прививки отсутствуют.");
+                return;
+            }
+
+            Console.WriteLine($"{ "Дата",-12} {"Вакцина",-25} {"Партия",-12} {"Ветврач",-20} {"След. дата",-12} {"Примечания",-25}");
+            Console.WriteLine(new string('-', 100));
+            foreach (var v in vacs)
+            {
+                var next = v.NextDueDate?.ToString("dd.MM.yyyy") ?? "—";
+                Console.WriteLine($"{v.VaccinationDate:dd.MM.yyyy,-12} {v.Vaccination?.VaccineName,-25} {v.BatchNumber,-12} {v.VeterinarianName,-20} {next,-12} {v.Notes,-25}");
+            }
+        }
+
+        public void CreateMedicalRecord()
+        {
+            MenuHelper.PrintHeader("Создание медицинской карты");
+            var animalId = ReadIntRequired("ID животного: ");
+
+            var exists = _medicalService.GetMedicalRecordByAnimalId(animalId);
+            if (exists != null)
+            {
+                MenuHelper.PrintError("Для этого животного карта уже существует.");
+                return;
+            }
+
+            var record = new MedicalRecord
+            {
+                AnimalId = animalId,
+                RecordNumber = ReadNonEmpty("Номер карты (например, MR-0001): "),
+                BloodType = ReadOptional("Группа крови (необязательно): "),
+                Allergies = ReadOptional("Аллергии (необязательно): "),
+                ChronicConditions = ReadOptional("Хронические заболевания (необязательно): "),
+                SpecialNeeds = ReadOptional("Особые нужды (необязательно): "),
+                VeterinarianNotes = ReadOptional("Заметки ветеринара (необязательно): "),
+                LastCheckupDate = ReadDateOptional("Последний осмотр (дд.мм.гггг, необязательно): ", null)
+            };
 
             try
             {
-                var vacRecord = new AnimalVaccination();
+                _medicalService.CreateMedicalRecord(record);
+                MenuHelper.PrintSuccess("Медицинская карта создана.");
+            }
+            catch (Exception ex)
+            {
+                MenuHelper.PrintError($"Ошибка создания карты: {ex.Message}");
+            }
+        }
 
-                Console.Write("ID животного: ");
-                vacRecord.AnimalId = int.Parse(Console.ReadLine());
+        public void AddVaccinationRecord()
+        {
+            MenuHelper.PrintHeader("Добавление записи о вакцинации");
+            try
+            {
+                var animalId = ReadIntRequired("ID животного: ");
+
+                var med = _medicalService.GetMedicalRecordByAnimalId(animalId);
+                if (med == null)
+                {
+                    MenuHelper.PrintError("Для животного нет медицинской карты. Сначала создайте её.");
+                    return;
+                }
 
                 var vaccinations = _medicalService.GetAllVaccinations();
+                if (!vaccinations.Any())
+                {
+                    MenuHelper.PrintError("Справочник вакцин пуст. Добавьте вакцину.");
+                    return;
+                }
+
                 Console.WriteLine("\nДоступные вакцины:");
-                foreach (var vac in vaccinations)
+                foreach (var v in vaccinations)
+                    Console.WriteLine($"{v.VaccinationId}. {v.VaccineName}");
+
+                var vacId = ReadIntRequired("Выберите ID вакцины: ");
+                var batch = ReadOptional("Номер партии (необязательно): ");
+                var vet = ReadOptional("Имя ветеринара (необязательно): ");
+                var nextDue = ReadDateOptional("Дата следующей вакцинации (дд.мм.гггг, необязательно): ", null);
+                var notes = ReadOptional("Примечания (необязательно): ");
+
+                var rec = new AnimalVaccination
                 {
-                    Console.WriteLine($"{vac.VaccinationId}. {vac.VaccineName}");
-                }
-                Console.Write("Выберите ID вакцины: ");
-                vacRecord.VaccinationId = int.Parse(Console.ReadLine());
+                    AnimalId = animalId,
+                    VaccinationId = vacId,
+                    BatchNumber = batch,
+                    VeterinarianName = vet,
+                    NextDueDate = nextDue,
+                    Notes = notes
+                };
 
-                Console.Write("Номер партии: ");
-                vacRecord.BatchNumber = Console.ReadLine();
-
-                Console.Write("Имя ветеринара: ");
-                vacRecord.VeterinarianName = Console.ReadLine();
-
-                Console.Write("Дата следующей вакцинации (дд.мм.гггг): ");
-                if (DateTime.TryParse(Console.ReadLine(), out DateTime nextDate))
-                {
-                    vacRecord.NextDueDate = nextDate;
-                }
-
-                Console.Write("Примечания: ");
-                vacRecord.Notes = Console.ReadLine();
-
-                _medicalService.AddAnimalVaccination(vacRecord);
-                MenuHelper.PrintSuccess("Запись о вакцинации добавлена!");
+                _medicalService.AddAnimalVaccination(rec);
+                MenuHelper.PrintSuccess("Запись о вакцинации добавлена.");
             }
             catch (Exception ex)
             {
@@ -664,75 +720,56 @@ namespace AnimalShelterCLI.UI
         public void ViewOverdueVaccinations()
         {
             MenuHelper.PrintHeader("Просроченные вакцинации");
-
-            var overdueVacs = _medicalService.GetOverdueVaccinations();
-
-            if (!overdueVacs.Any())
+            var overdue = _medicalService.GetOverdueVaccinations();
+            if (!overdue.Any())
             {
-                MenuHelper.PrintSuccess("Нет просроченных вакцинаций!");
+                MenuHelper.PrintSuccess("Нет просроченных вакцинаций.");
                 return;
             }
 
-            Console.WriteLine($"{"Животное",-20} {"Вакцина",-25} {"Срок истек",-15}");
+            Console.WriteLine($"{ "Животное",-20} {"Вакцина",-25} {"Срок истёк",-12}");
             Console.WriteLine(new string('-', 65));
-
-            foreach (var vac in overdueVacs)
+            foreach (var v in overdue)
             {
-                Console.WriteLine($"{vac.MedicalRecord?.Animal?.Name,-20} " +
-                                $"{vac.Vaccination?.VaccineName,-25} " +
-                                $"{vac.NextDueDate:dd.MM.yyyy,-15}");
+                var due = v.NextDueDate?.ToString("dd.MM.yyyy") ?? "—";
+                Console.WriteLine($"{v.MedicalRecord?.Animal?.Name,-20} {v.Vaccination?.VaccineName,-25} {due,-12}");
             }
-
-            MenuHelper.PrintInfo($"\nВсего просроченных: {overdueVacs.Count}");
+            MenuHelper.PrintInfo($"\nВсего просроченных: {overdue.Count}");
         }
 
         public void ListAllVaccinations()
         {
-            MenuHelper.PrintHeader("Список вакцин");
-
+            MenuHelper.PrintHeader("Справочник вакцин");
             var vaccinations = _medicalService.GetAllVaccinations();
-
             if (!vaccinations.Any())
             {
-                MenuHelper.PrintInfo("Нет зарегистрированных вакцин");
+                MenuHelper.PrintInfo("Нет зарегистрированных вакцин.");
                 return;
             }
 
-            Console.WriteLine($"{"ID",-5} {"Название",-30} {"Производитель",-20} {"Срок действия (мес.)",-20}");
+            Console.WriteLine($"{ "ID",-5} {"Название",-30} {"Производитель",-20} {"Срок (мес.)",-12}");
             Console.WriteLine(new string('-', 80));
-
-            foreach (var vac in vaccinations)
+            foreach (var v in vaccinations)
             {
-                Console.WriteLine($"{vac.VaccinationId,-5} {vac.VaccineName,-30} " +
-                                $"{vac.Manufacturer,-20} {vac.ValidityPeriodMonths,-20}");
+                Console.WriteLine($"{v.VaccinationId,-5} {v.VaccineName,-30} {v.Manufacturer,-20} {v.ValidityPeriodMonths,-12}");
             }
         }
 
         public void AddVaccination()
         {
-            MenuHelper.PrintHeader("Добавление новой вакцины");
-
+            MenuHelper.PrintHeader("Добавление вакцины");
             try
             {
-                var vaccination = new Vaccination();
-
-                Console.Write("Название вакцины: ");
-                vaccination.VaccineName = Console.ReadLine();
-
-                Console.Write("Описание: ");
-                vaccination.Description = Console.ReadLine();
-
-                Console.Write("Производитель: ");
-                vaccination.Manufacturer = Console.ReadLine();
-
-                Console.Write("Срок действия (месяцев): ");
-                if (int.TryParse(Console.ReadLine(), out int validity))
+                var v = new Vaccination
                 {
-                    vaccination.ValidityPeriodMonths = validity;
-                }
+                    VaccineName = ReadNonEmpty("Название вакцины: "),
+                    Description = ReadOptional("Описание (необязательно): "),
+                    Manufacturer = ReadOptional("Производитель (необязательно): "),
+                    ValidityPeriodMonths = ReadIntOptional("Срок действия (мес., необязательно): ", null)
+                };
 
-                _medicalService.AddVaccination(vaccination);
-                MenuHelper.PrintSuccess("Вакцина добавлена в справочник!");
+                _medicalService.AddVaccination(v);
+                MenuHelper.PrintSuccess("Вакцина добавлена.");
             }
             catch (Exception ex)
             {
@@ -747,51 +784,56 @@ namespace AnimalShelterCLI.UI
         public void GenerateAnimalReport()
         {
             MenuHelper.PrintHeader("Отчет по животным");
-
             var animals = _animalService.GetAllAnimals();
             var statuses = _animalService.GetAllStatuses();
 
             Console.WriteLine($"Всего животных в приюте: {animals.Count}\n");
 
             Console.WriteLine("Распределение по статусам:");
-            foreach (var status in statuses)
+            foreach (var s in statuses)
             {
-                var count = animals.Count(a => a.StatusId == status.StatusId);
-                Console.WriteLine($"  {status.StatusName,-20}: {count}");
+                var count = animals.Count(a => a.StatusId == s.StatusId);
+                Console.WriteLine($" {s.StatusName,-20}: {count}");
             }
 
             Console.WriteLine("\nРаспределение по видам:");
-            var speciesGroups = animals.GroupBy(a => a.Species);
-            foreach (var group in speciesGroups)
+            foreach (var g in animals.GroupBy(a => a.Species))
             {
-                Console.WriteLine($"  {group.Key,-20}: {group.Count()}");
+                Console.WriteLine($" {g.Key,-20}: {g.Count()}");
             }
 
-            var avgAge = animals.Where(a => a.Age.HasValue).Average(a => a.Age.Value);
-            Console.WriteLine($"\nСредний возраст: {avgAge:F1} лет");
+            var withAge = animals.Where(a => a.Age.HasValue).ToList();
+            if (withAge.Any())
+            {
+                var avgAge = withAge.Average(a => a.Age!.Value);
+                Console.WriteLine($"\nСредний возраст: {avgAge:F1} лет");
+            }
+            else
+            {
+                Console.WriteLine("\nСредний возраст: —");
+            }
         }
 
         public void GenerateAdoptionReport()
         {
             MenuHelper.PrintHeader("Отчет по усыновлениям");
-
             var adoptions = _adoptionService.GetAllAdoptions();
             var statuses = _adoptionService.GetAllStatuses();
 
             Console.WriteLine($"Всего записей об усыновлениях: {adoptions.Count}\n");
 
             Console.WriteLine("Распределение по статусам:");
-            foreach (var status in statuses)
+            foreach (var s in statuses)
             {
-                var count = adoptions.Count(a => a.StatusId == status.StatusId);
-                Console.WriteLine($"  {status.StatusName,-20}: {count}");
+                var count = adoptions.Count(a => a.StatusId == s.StatusId);
+                Console.WriteLine($" {s.StatusName,-20}: {count}");
             }
 
-            var thisMonth = adoptions.Count(a => a.AdoptionDate.Month == DateTime.Now.Month &&
-                                                 a.AdoptionDate.Year == DateTime.Now.Year);
-            Console.WriteLine($"\nУсыновлений в текущем месяце: {thisMonth}");
+            var now = DateTime.Now;
+            var thisMonth = adoptions.Count(a => a.AdoptionDate.Month == now.Month && a.AdoptionDate.Year == now.Year);
+            var thisYear = adoptions.Count(a => a.AdoptionDate.Year == now.Year);
 
-            var thisYear = adoptions.Count(a => a.AdoptionDate.Year == DateTime.Now.Year);
+            Console.WriteLine($"\nУсыновлений в текущем месяце: {thisMonth}");
             Console.WriteLine($"Усыновлений в текущем году: {thisYear}");
         }
 
