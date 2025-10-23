@@ -31,10 +31,8 @@ namespace AnimalShelterCLI.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<MedicalRecord>()
-                .HasOne(mr => mr.Animal)
-                .WithOne(a => a.MedicalRecord)
-                .HasForeignKey<MedicalRecord>(mr => mr.AnimalId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .HasIndex(mr => mr.RecordNumber)
+                .IsUnique();
 
             modelBuilder.Entity<Adoption>()
                 .HasOne(a => a.Adopter)
