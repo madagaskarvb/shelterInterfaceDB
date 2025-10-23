@@ -32,8 +32,9 @@
 1. Клонируйте репозиторий:
 
 ```bash
-git clone https://github.com/yourusername/animal-shelter-cli.git
-cd animal-shelter-cli
+git clone https://github.com/madagaskarvb/shelterInterfaceDB.git
+cd shelterInterfaceDB
+cd MyFirstApp
 ```
 
 2. Настройте базу данных PostgreSQL (см. скрипт в папке `sql/`).
