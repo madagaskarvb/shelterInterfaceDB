@@ -34,6 +34,7 @@
 ```bash
 git clone https://github.com/madagaskarvb/shelterInterfaceDB.git
 cd shelterInterfaceDB
+cd MyFirstApp
 ```
 
 2. Настройте базу данных PostgreSQL (см. скрипт в папке `sql/`).
